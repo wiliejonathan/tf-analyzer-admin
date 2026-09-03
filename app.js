@@ -3,7 +3,11 @@
 
   const cfg = window.TF_ADMIN_CONFIG || {};
   const DEFAULT_API_URL = String(cfg.apiUrl || "").trim();
-  const ADMIN_EMAIL = "wiliejonathan1999@gmail.com";
+  const PRIMARY_ADMIN_EMAIL = "wiliejonathan@gmail.com";
+  const ADMIN_EMAILS = new Set([
+    PRIMARY_ADMIN_EMAIL,
+    "wiliejonathan1999@gmail.com"
+  ]);
   const PLAN_OPTIONS = [
     ["TEST_1_DAY", "Trial 1 Hari"],
     ["MAIN_1M", "1 Bulan"],
@@ -47,6 +51,7 @@
     sendAllBtn: $("sendAllBtn"), sendAllUpdateBtn: $("sendAllUpdateBtn"), prevPageBtn: $("prevPageBtn"), nextPageBtn: $("nextPageBtn"), pageButtons: $("pageButtons"), pageSummary: $("pageSummary"), pageSizeSelect: $("pageSizeSelect"),
     customApiUrlInput: $("customApiUrlInput"), saveApiBtn: $("saveApiBtn"), resetApiBtn: $("resetApiBtn"), apiStatusLabel: $("apiStatusLabel"), apiStatusDot: $("apiStatusDot"), apiStatusText: $("apiStatusText"),
     autoRefreshToggle: $("autoRefreshToggle"), autoRefreshInterval: $("autoRefreshInterval"), autoRefreshLabel: $("autoRefreshLabel"), lastRefreshText: $("lastRefreshText"), rememberStatusLabel: $("rememberStatusLabel"), forgetSessionBtn: $("forgetSessionBtn"),
+    planConfirmModal: $("planConfirmModal"), planConfirmText: $("planConfirmText"), planConfirmSummary: $("planConfirmSummary"), planConfirmCancel: $("planConfirmCancel"), planConfirmOk: $("planConfirmOk"),
     busyOverlay: $("busyOverlay"), busyText: $("busyText"), toast: $("toast")
   };
 
@@ -171,8 +176,27 @@
     return { result, list };
   }
 
+  function normalizedEmail(user) {
+    return String(user?.email || "").trim().toLowerCase();
+  }
+
   function isAdminUser(user) {
-    return String(user?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
+    return ADMIN_EMAILS.has(normalizedEmail(user));
+  }
+
+  function adminSortPriority(user) {
+    const email = normalizedEmail(user);
+    if (email === PRIMARY_ADMIN_EMAIL) return 0;
+    if (ADMIN_EMAILS.has(email)) return 1;
+    return 2;
+  }
+
+  function sortUsersForDisplay(list) {
+    return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
+      const priority = adminSortPriority(a) - adminSortPriority(b);
+      if (priority !== 0) return priority;
+      return String(a?.email || "").localeCompare(String(b?.email || ""), "id", { sensitivity: "base" });
+    });
   }
 
   function displayStatus(user) {
@@ -303,7 +327,7 @@
   }
 
   function applyUsers(list) {
-    users = Array.isArray(list) ? list : [];
+    users = sortUsersForDisplay(list);
     updateStats();
     renderUsers();
     const time = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -367,10 +391,15 @@
     scheduleAutoRefresh();
   }
 
+  function getSavedAdminKey() {
+    return String(localStorage.getItem(STORAGE.adminKey) || "").trim();
+  }
+
   function clearRememberedLogin() {
     localStorage.removeItem(STORAGE.remember);
     localStorage.removeItem(STORAGE.adminKey);
     els.rememberAdminKey.checked = false;
+    els.adminKeyInput.value = "";
     updateRememberUi();
   }
 
@@ -391,8 +420,11 @@
     stopAutoRefresh();
     els.appView.hidden = true;
     els.loginView.hidden = false;
-    els.adminKeyInput.value = "";
     if (clearRemembered) clearRememberedLogin();
+    const savedKey = getSavedAdminKey();
+    els.adminKeyInput.value = savedKey;
+    els.rememberAdminKey.checked = !!savedKey && localStorage.getItem(STORAGE.remember) === "true";
+    updateRememberUi();
     els.adminKeyInput.focus();
   }
 
@@ -450,7 +482,7 @@
   });
 
   document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => activateNav(btn.dataset.nav)));
-  els.lockBtn.addEventListener("click", () => lockDashboard(true));
+  els.lockBtn.addEventListener("click", () => lockDashboard(false));
   els.searchInput.addEventListener("input", () => { currentPage = 1; renderUsers(); });
   els.pageSizeSelect.value = String(pageSize);
   els.pageSizeSelect.addEventListener("change", () => { pageSize = Number(els.pageSizeSelect.value || 10); currentPage = 1; renderUsers(); });
@@ -510,6 +542,43 @@
     finally { setBusy(false); }
   }
 
+  let planConfirmResolver = null;
+
+  function closePlanConfirmModal(result) {
+    if (!els.planConfirmModal || els.planConfirmModal.hidden) return;
+    els.planConfirmModal.hidden = true;
+    els.planConfirmModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    const resolve = planConfirmResolver;
+    planConfirmResolver = null;
+    if (resolve) resolve(!!result);
+  }
+
+  function confirmPlanChange(user, oldPlan, newPlan) {
+    const oldLabel = PLAN_OPTIONS.find(([value]) => value === oldPlan)?.[1] || oldPlan || "-";
+    const newLabel = PLAN_OPTIONS.find(([value]) => value === newPlan)?.[1] || newPlan || "-";
+    els.planConfirmText.textContent = `Anda akan mengubah plan untuk ${user?.email || user?.licenseId || "user ini"}.`;
+    els.planConfirmSummary.innerHTML = `
+      <div><span>Plan sekarang</span><strong>${escapeHtml(oldLabel)}</strong></div>
+      <div class="confirm-arrow">→</div>
+      <div><span>Plan baru</span><strong>${escapeHtml(newLabel)}</strong></div>
+      <small>Plan akan dihitung ulang dari sekarang. TOKEN, LICENSE_ID, dan device tetap dipertahankan.</small>`;
+    els.planConfirmModal.hidden = false;
+    els.planConfirmModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    setTimeout(() => els.planConfirmOk.focus(), 30);
+    return new Promise(resolve => { planConfirmResolver = resolve; });
+  }
+
+  els.planConfirmCancel.addEventListener("click", () => closePlanConfirmModal(false));
+  els.planConfirmOk.addEventListener("click", () => closePlanConfirmModal(true));
+  els.planConfirmModal.addEventListener("click", (e) => {
+    if (e.target?.dataset?.modalDismiss === "true") closePlanConfirmModal(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && els.planConfirmModal && !els.planConfirmModal.hidden) closePlanConfirmModal(false);
+  });
+
   async function executePlanChange(select) {
     const licenseId = decodeURIComponent(select.dataset.id || "");
     const oldPlan = String(select.dataset.currentPlan || "").trim().toUpperCase();
@@ -519,7 +588,7 @@
     const user = users.find(u => u.licenseId === licenseId);
     const label = user?.email || licenseId;
     const planLabel = PLAN_OPTIONS.find(([value]) => value === newPlan)?.[1] || newPlan;
-    const ok = confirm(`Ubah plan ${label} menjadi ${planLabel}?\n\nPlan akan dihitung ulang dari sekarang. TOKEN, LICENSE_ID, dan device tetap dipertahankan.`);
+    const ok = await confirmPlanChange(user, oldPlan, newPlan);
     if (!ok) {
       select.value = oldPlan;
       return;
@@ -647,11 +716,11 @@
     updateRememberUi();
 
     const remembered = localStorage.getItem(STORAGE.remember) === "true";
-    const savedKey = remembered ? String(localStorage.getItem(STORAGE.adminKey) || "").trim() : "";
-    if (savedKey && ensureConfigured()) {
+    const savedKey = remembered ? getSavedAdminKey() : "";
+    if (savedKey) {
       els.adminKeyInput.value = savedKey;
       els.rememberAdminKey.checked = true;
-      loginWithKey(savedKey, true, true);
+      if (ensureConfigured()) loginWithKey(savedKey, true, true);
     }
   }
 

@@ -36,8 +36,8 @@
         </div>
         <label class="remember-row" for="rememberAdminKey">
           <input id="rememberAdminKey" type="checkbox" />
-          <span class="remember-tick" aria-hidden="true">✓</span>
-          <span><strong>Remember</strong><small>Tetap login setelah refresh di browser ini.</small></span>
+          <span class="remember-box" aria-hidden="true"><span>✓</span></span>
+          <strong>Remember</strong>
         </label>
         <button class="button button-primary button-wide" type="submit">Buka Dashboard</button>
       </form>
@@ -282,13 +282,30 @@
                   <strong id="rememberStatusLabel">Tidak Disimpan</strong>
                 </div>
               </div>
-              <p>Jika <strong>Remember</strong> diaktifkan saat login, Admin Key disimpan di local storage browser agar refresh page tidak meminta login ulang.</p>
-              <button id="forgetSessionBtn" class="button" type="button">Forget Remembered Login</button>
+              <p><strong>Remember</strong> menyimpan Admin Key pada browser ini. Saat dashboard di-lock/logout, key tetap tersedia di kolom login sampai Anda memilih Forget.</p>
+              <button id="forgetSessionBtn" class="button" type="button">Forget Saved Admin Key</button>
             </article>
           </div>
         </section>
       </section>
     </main>
+  </div>
+
+  <div id="planConfirmModal" class="confirm-modal" hidden aria-hidden="true">
+    <div class="confirm-backdrop" data-modal-dismiss="true"></div>
+    <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="planConfirmTitle">
+      <div class="confirm-icon">!</div>
+      <div class="confirm-copy">
+        <div class="panel-kicker">VERIFIKASI PERUBAHAN PLAN</div>
+        <h3 id="planConfirmTitle">Confirm perubahan plan?</h3>
+        <p id="planConfirmText">Pastikan plan yang dipilih sudah benar.</p>
+        <div id="planConfirmSummary" class="confirm-summary"></div>
+      </div>
+      <div class="confirm-actions">
+        <button id="planConfirmCancel" class="button confirm-cancel" type="button">Cancel</button>
+        <button id="planConfirmOk" class="button button-primary confirm-ok" type="button">Confirm</button>
+      </div>
+    </section>
   </div>
 
   <div id="busyOverlay" class="busy-overlay" hidden>
