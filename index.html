@@ -34,10 +34,15 @@
           <span class="input-icon">●</span>
           <input id="adminKeyInput" type="password" autocomplete="off" required placeholder="Masukkan admin key" />
         </div>
+        <label class="remember-row" for="rememberAdminKey">
+          <input id="rememberAdminKey" type="checkbox" />
+          <span class="remember-tick" aria-hidden="true">✓</span>
+          <span><strong>Remember</strong><small>Tetap login setelah refresh di browser ini.</small></span>
+        </label>
         <button class="button button-primary button-wide" type="submit">Buka Dashboard</button>
       </form>
       <div id="configWarning" class="alert alert-error" hidden></div>
-      <div class="auth-foot">API backend sudah dikonfigurasi otomatis.</div>
+      <div class="auth-foot">API backend default sudah dikonfigurasi. Bisa diubah dari menu Pengaturan setelah login.</div>
     </div>
   </section>
 
@@ -48,6 +53,7 @@
         <div>
           <div class="topbar-title">TF ANALYZER ANALYST</div>
           <div class="topbar-subtitle">License Admin Dashboard</div>
+          <div class="owner-topline">Owner · Wilie Jonathan</div>
         </div>
       </div>
 
@@ -88,6 +94,7 @@
       <div class="sidebar-footer">
         <span>© 2026 SkillFusion</span>
         <strong>TF Analyzer Analyst</strong>
+        <span class="owner-credit">Owner · Wilie Jonathan</span>
         <button id="lockBtn" class="text-button" type="button">Lock Dashboard</button>
       </div>
     </aside>
@@ -219,13 +226,65 @@
           <div class="panel-head compact-head">
             <div>
               <div class="panel-kicker">PENGATURAN</div>
-              <h2>System Status</h2>
+              <h2>System Settings</h2>
+              <p>Pengaturan tersimpan khusus di browser ini.</p>
             </div>
           </div>
-          <div class="settings-grid">
-            <article><span>Backend API</span><strong>Configured</strong><small>Apps Script /exec</small></article>
-            <article><span>Auto Refresh</span><strong>30 Detik</strong><small>Tanpa tombol refresh manual</small></article>
-            <article><span>Brand</span><strong>SkillFusion</strong><small>TF Analyzer Analyst</small></article>
+
+          <div class="settings-form-grid">
+            <article class="setting-card">
+              <div class="setting-head">
+                <div>
+                  <span>Backend API</span>
+                  <strong id="apiStatusLabel">Configured</strong>
+                </div>
+                <i id="apiStatusDot" class="setting-status-dot"></i>
+              </div>
+              <label class="setting-field">
+                <span>Custom Apps Script /exec URL</span>
+                <input id="customApiUrlInput" type="url" spellcheck="false" placeholder="https://script.google.com/macros/s/.../exec" />
+              </label>
+              <div class="setting-actions">
+                <button id="saveApiBtn" class="button button-primary" type="button">Save &amp; Test API</button>
+                <button id="resetApiBtn" class="button" type="button">Reset Default</button>
+              </div>
+              <small id="apiStatusText">Menggunakan API default dari config.js.</small>
+            </article>
+
+            <article class="setting-card">
+              <div class="setting-head">
+                <div>
+                  <span>Auto Refresh</span>
+                  <strong id="autoRefreshLabel">Aktif</strong>
+                </div>
+                <label class="switch" title="Aktif/nonaktif auto refresh">
+                  <input id="autoRefreshToggle" type="checkbox" checked />
+                  <span></span>
+                </label>
+              </div>
+              <label class="setting-field">
+                <span>Interval</span>
+                <select id="autoRefreshInterval">
+                  <option value="10000">10 Detik</option>
+                  <option value="15000">15 Detik</option>
+                  <option value="30000">30 Detik</option>
+                  <option value="60000">60 Detik</option>
+                  <option value="120000">2 Menit</option>
+                </select>
+              </label>
+              <small id="lastRefreshText">Belum ada refresh otomatis.</small>
+            </article>
+
+            <article class="setting-card brand-setting">
+              <div class="setting-head">
+                <div>
+                  <span>Session</span>
+                  <strong id="rememberStatusLabel">Tidak Disimpan</strong>
+                </div>
+              </div>
+              <p>Jika <strong>Remember</strong> diaktifkan saat login, Admin Key disimpan di local storage browser agar refresh page tidak meminta login ulang.</p>
+              <button id="forgetSessionBtn" class="button" type="button">Forget Remembered Login</button>
+            </article>
           </div>
         </section>
       </section>
