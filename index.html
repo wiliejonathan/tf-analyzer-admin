@@ -3,95 +3,153 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#071f1a" />
+  <meta name="theme-color" content="#071915" />
   <title>TF Analyzer Analyst — License Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-bg"></div>
+  <div class="shell">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">TF</div>
-        <div>
-          <div class="eyebrow">TF ANALYZER ANALYST</div>
-          <h1>License Admin</h1>
+      <div class="brand-cluster">
+        <div class="brand-main">
+          <img class="brand-logo" src="assets/tf-primary-logo.jpg" alt="TF Analyzer Analyst Logo" />
+          <div>
+            <div class="brand-kicker">SkillFusion Brand Ecosystem</div>
+            <h1>TF Analyzer Analyst <span>License Admin</span></h1>
+            <p class="brand-copy">Admin dashboard untuk kelola license, token, status online PC/Mobile, reset device, dan email update.</p>
+          </div>
+        </div>
+        <div class="brand-side">
+          <img class="sf-mark" src="assets/skillfusion-mark.png" alt="SkillFusion mark" />
+          <div>
+            <strong>Powered by SkillFusion</strong>
+            <span>Elevate your skills, expand your horizons.</span>
+          </div>
         </div>
       </div>
-      <div class="top-actions">
-        <button id="refreshBtn" class="btn btn-ghost" type="button" disabled>↻ Refresh</button>
-        <button id="lockBtn" class="btn btn-ghost" type="button" hidden>Lock</button>
+      <div class="topbar-actions">
+        <button id="lockBtn" class="btn btn-ghost" type="button" hidden>Lock Dashboard</button>
       </div>
     </header>
 
-    <main>
-      <section id="loginPanel" class="login-wrap">
-        <div class="panel login-card">
-          <div class="panel-kicker">ADMIN ACCESS</div>
+    <main class="main-layout">
+      <section id="loginPanel" class="login-section">
+        <div class="glass-card login-card">
+          <div class="card-kicker">ADMIN ACCESS</div>
           <h2>Masuk ke License Dashboard</h2>
-          <p>Masukkan Admin Dashboard Key. Key hanya disimpan di memori halaman ini dan tidak disimpan ke GitHub.</p>
+          <p class="lead">Masukkan <strong>Admin Dashboard Key</strong> dan URL <strong>Apps Script /exec</strong>. Admin key hanya disimpan selama sesi halaman aktif.</p>
+
+          <div class="setup-note">
+            <div class="setup-icon">i</div>
+            <div>
+              <strong>Catatan setup</strong>
+              <p>Kalau halaman sebelumnya error karena config belum diisi, sekarang URL Apps Script bisa langsung dimasukkan di halaman ini tanpa edit file lagi.</p>
+            </div>
+          </div>
+
           <form id="loginForm" class="login-form">
             <label>
               <span>Admin Dashboard Key</span>
               <input id="adminKeyInput" type="password" autocomplete="off" required placeholder="Masukkan admin key" />
             </label>
-            <button class="btn btn-primary" type="submit">Buka Dashboard</button>
+            <label>
+              <span>Apps Script /exec URL</span>
+              <input id="apiUrlInput" type="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec" />
+            </label>
+            <button class="btn btn-primary btn-large" type="submit">Buka Dashboard</button>
           </form>
+
           <div id="configWarning" class="notice notice-danger" hidden></div>
         </div>
       </section>
 
       <section id="dashboard" hidden>
         <div class="stats-grid">
-          <article class="stat-card"><span>Total User</span><strong id="statTotal">0</strong></article>
-          <article class="stat-card"><span>License Active</span><strong id="statActive">0</strong></article>
-          <article class="stat-card"><span>PC Online</span><strong id="statPc">0</strong></article>
-          <article class="stat-card"><span>Mobile Online</span><strong id="statMobile">0</strong></article>
+          <article class="metric-card">
+            <span class="metric-label">Total User</span>
+            <strong id="statTotal">0</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">License Active</span>
+            <strong id="statActive">0</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">PC Online</span>
+            <strong id="statPc">0</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Mobile Online</span>
+            <strong id="statMobile">0</strong>
+          </article>
         </div>
 
-        <section class="panel add-panel">
-          <div class="section-head">
-            <div>
-              <div class="panel-kicker">ADD LICENSE</div>
-              <h2>Tambah User</h2>
+        <div class="dashboard-grid">
+          <section class="glass-card add-card">
+            <div class="section-head">
+              <div>
+                <div class="card-kicker">ADD LICENSE</div>
+                <h3>Tambah User Baru</h3>
+              </div>
             </div>
-          </div>
-          <form id="addUserForm" class="add-user-grid">
-            <label>
-              <span>Email</span>
-              <input id="newEmail" type="email" required placeholder="user@email.com" />
-            </label>
-            <label>
-              <span>Plan</span>
-              <select id="newPlan" required>
-                <option value="">Pilih plan</option>
-                <option value="TEST_1_DAY">Trial 1 Hari</option>
-                <option value="MAIN_1M">1 Bulan</option>
-                <option value="MAIN_3M">3 Bulan</option>
-                <option value="MAIN_6M">6 Bulan</option>
-                <option value="MAIN_1Y">1 Tahun</option>
-                <option value="MAIN_PERMANENT">Permanent</option>
-                <option value="BUNDLE_1M_ISIGNAL_1D">1 Bulan + iSignal 1 Hari</option>
-                <option value="BUNDLE_1M_ISIGNAL_PREMIUM">1 Bulan + iSignal Premium</option>
-                <option value="BUNDLE_3M_ISIGNAL_1D">3 Bulan + iSignal 1 Hari</option>
-                <option value="BUNDLE_3M_ISIGNAL_PREMIUM">3 Bulan + iSignal Premium</option>
-              </select>
-            </label>
-            <button id="addUserBtn" class="btn btn-primary add-user-btn" type="submit">+ Tambah User</button>
-          </form>
-          <div id="newTokenResult" class="token-result" hidden>
-            <div>
-              <span>Token baru</span>
-              <strong id="newTokenValue"></strong>
-            </div>
-            <button id="copyNewTokenBtn" class="btn btn-small btn-ghost" type="button">Copy Token</button>
-          </div>
-        </section>
+            <form id="addUserForm" class="add-user-grid">
+              <label>
+                <span>Email</span>
+                <input id="newEmail" type="email" required placeholder="user@email.com" />
+              </label>
+              <label>
+                <span>Plan</span>
+                <select id="newPlan" required>
+                  <option value="">Pilih plan</option>
+                  <option value="TEST_1_DAY">Trial 1 Hari</option>
+                  <option value="MAIN_1M">1 Bulan</option>
+                  <option value="MAIN_3M">3 Bulan</option>
+                  <option value="MAIN_6M">6 Bulan</option>
+                  <option value="MAIN_1Y">1 Tahun</option>
+                  <option value="MAIN_PERMANENT">Permanent</option>
+                  <option value="BUNDLE_1M_ISIGNAL_1D">1 Bulan + iSignal 1 Hari</option>
+                  <option value="BUNDLE_1M_ISIGNAL_PREMIUM">1 Bulan + iSignal Premium</option>
+                  <option value="BUNDLE_3M_ISIGNAL_1D">3 Bulan + iSignal 1 Hari</option>
+                  <option value="BUNDLE_3M_ISIGNAL_PREMIUM">3 Bulan + iSignal Premium</option>
+                </select>
+              </label>
+              <button id="addUserBtn" class="btn btn-primary" type="submit">+ Tambah User</button>
+            </form>
 
-        <section class="panel users-panel">
-          <div class="toolbar">
+            <div id="newTokenResult" class="token-banner" hidden>
+              <div>
+                <span>Token baru berhasil dibuat</span>
+                <strong id="newTokenValue">-</strong>
+              </div>
+              <button id="copyNewTokenBtn" class="btn btn-secondary" type="button">Copy Token</button>
+            </div>
+          </section>
+
+          <section class="glass-card info-card">
+            <div class="section-head compact">
+              <div>
+                <div class="card-kicker">STATUS</div>
+                <h3>Informasi Dashboard</h3>
+              </div>
+            </div>
+            <ul class="info-list">
+              <li><span class="dot pc"></span> Dot pertama = status <strong>PC</strong></li>
+              <li><span class="dot mobile"></span> Dot kedua = status <strong>Mobile</strong></li>
+              <li>Search mendukung email, token, plan, status, dan last seen.</li>
+              <li>Bulk action tersedia untuk <strong>SEND EMAIL ALL</strong> dan <strong>SEND EMAIL ALL UPDATE</strong>.</li>
+              <li>Data akan auto-refresh tiap 30 detik setelah login, jadi tombol refresh memang tidak diperlukan.</li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="glass-card users-card">
+          <div class="users-head">
             <div>
-              <div class="panel-kicker">LICENSE USERS</div>
-              <h2>Daftar User</h2>
+              <div class="card-kicker">LICENSE USERS</div>
+              <h3>Daftar User</h3>
             </div>
             <div class="search-wrap">
               <span class="search-icon">⌕</span>
@@ -100,8 +158,8 @@
             </div>
           </div>
 
-          <div class="table-scroll">
-            <table>
+          <div class="table-wrap desktop-only">
+            <table class="users-table">
               <thead>
                 <tr>
                   <th class="status-col">Status</th>
@@ -116,13 +174,15 @@
               </thead>
               <tbody id="usersBody"></tbody>
             </table>
-            <div id="emptyState" class="empty-state" hidden>Tidak ada user yang cocok.</div>
           </div>
 
+          <div id="mobileUsers" class="mobile-cards mobile-only"></div>
+          <div id="emptyState" class="empty-state" hidden>Tidak ada user yang cocok.</div>
+
           <div class="bulk-bar">
-            <div class="bulk-copy">
+            <div>
               <strong>Bulk Email</strong>
-              <span>Dikirim hanya ke license yang masih aktif.</span>
+              <p>Email hanya dikirim ke license yang masih aktif. Perhatikan kuota Gmail / Apps Script harian.</p>
             </div>
             <div class="bulk-actions">
               <button id="sendAllBtn" class="btn btn-secondary" type="button">SEND EMAIL ALL</button>
@@ -135,8 +195,10 @@
   </div>
 
   <div id="busyOverlay" class="busy-overlay" hidden>
-    <div class="spinner"></div>
-    <strong id="busyText">Memproses...</strong>
+    <div class="busy-box">
+      <div class="spinner"></div>
+      <strong id="busyText">Memproses...</strong>
+    </div>
   </div>
   <div id="toast" class="toast" hidden></div>
 
