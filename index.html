@@ -3,191 +3,229 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#071915" />
+  <meta name="theme-color" content="#061511" />
+  <meta name="color-scheme" content="dark" />
   <title>TF Analyzer Analyst — License Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-bg"></div>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand-cluster">
-        <div class="brand-main">
-          <img class="brand-logo" src="assets/tf-primary-logo.jpg" alt="TF Analyzer Analyst Logo" />
-          <div>
-            <div class="brand-kicker">SkillFusion Brand Ecosystem</div>
-            <h1>TF Analyzer Analyst <span>License Admin</span></h1>
-            <p class="brand-copy">Admin dashboard untuk kelola license, token, status online PC/Mobile, reset device, dan email update.</p>
-          </div>
-        </div>
-        <div class="brand-side">
-          <img class="sf-mark" src="assets/skillfusion-mark.png" alt="SkillFusion mark" />
-          <div>
-            <strong>Powered by SkillFusion</strong>
-            <span>Elevate your skills, expand your horizons.</span>
-          </div>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <section id="loginView" class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img src="assets/tf-analyzer-analyst-primary.jpeg" alt="TF Analyzer Analyst" class="auth-primary-logo" />
+        <div>
+          <div class="eyebrow">TF ANALYZER ANALYST</div>
+          <h1>License Admin</h1>
+          <p>Kelola user, lisensi, perangkat, dan email update dari satu dashboard.</p>
         </div>
       </div>
-      <div class="topbar-actions">
-        <button id="lockBtn" class="btn btn-ghost" type="button" hidden>Lock Dashboard</button>
+
+      <div class="auth-branding">
+        <img src="assets/skillfusion-white-mark.png" alt="SkillFusion" />
+        <span>Powered by <strong>SkillFusion</strong></span>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label for="adminKeyInput">Admin Dashboard Key</label>
+        <div class="input-shell">
+          <span class="input-icon">●</span>
+          <input id="adminKeyInput" type="password" autocomplete="off" required placeholder="Masukkan admin key" />
+        </div>
+        <button class="button button-primary button-wide" type="submit">Buka Dashboard</button>
+      </form>
+      <div id="configWarning" class="alert alert-error" hidden></div>
+      <div class="auth-foot">API backend sudah dikonfigurasi otomatis.</div>
+    </div>
+  </section>
+
+  <div id="appView" class="app-shell" hidden>
+    <header class="topbar">
+      <div class="topbar-product">
+        <img src="assets/tf-analyzer-analyst-primary.jpeg" alt="TF Analyzer Analyst" class="topbar-logo" />
+        <div>
+          <div class="topbar-title">TF ANALYZER ANALYST</div>
+          <div class="topbar-subtitle">License Admin Dashboard</div>
+        </div>
+      </div>
+
+      <div class="skillfusion-mini" aria-label="SkillFusion branding">
+        <img src="assets/skillfusion-white-mark.png" alt="SkillFusion logo" />
+        <div>
+          <strong>SkillFusion</strong>
+          <span>Brand Ecosystem</span>
+        </div>
       </div>
     </header>
 
-    <main class="main-layout">
-      <section id="loginPanel" class="login-section">
-        <div class="glass-card login-card">
-          <div class="card-kicker">ADMIN ACCESS</div>
-          <h2>Masuk ke License Dashboard</h2>
-          <p class="lead">Masukkan <strong>Admin Dashboard Key</strong> dan URL <strong>Apps Script /exec</strong>. Admin key hanya disimpan selama sesi halaman aktif.</p>
+    <aside class="sidebar">
+      <nav class="side-nav" aria-label="Admin Navigation">
+        <button class="nav-item active" data-nav="dashboard" type="button">
+          <span class="nav-icon">▦</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-nav="add-user" type="button">
+          <span class="nav-icon">＋</span><span>Tambah User</span>
+        </button>
+        <button class="nav-item" data-nav="users" type="button">
+          <span class="nav-icon">☷</span><span>Manajemen User</span>
+        </button>
+        <button class="nav-item" data-nav="settings" type="button">
+          <span class="nav-icon">⚙</span><span>Pengaturan</span>
+        </button>
+      </nav>
 
-          <div class="setup-note">
-            <div class="setup-icon">i</div>
-            <div>
-              <strong>Catatan setup</strong>
-              <p>Kalau halaman sebelumnya error karena config belum diisi, sekarang URL Apps Script bisa langsung dimasukkan di halaman ini tanpa edit file lagi.</p>
-            </div>
-          </div>
-
-          <form id="loginForm" class="login-form">
-            <label>
-              <span>Admin Dashboard Key</span>
-              <input id="adminKeyInput" type="password" autocomplete="off" required placeholder="Masukkan admin key" />
-            </label>
-            <label>
-              <span>Apps Script /exec URL</span>
-              <input id="apiUrlInput" type="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec" />
-            </label>
-            <button class="btn btn-primary btn-large" type="submit">Buka Dashboard</button>
-          </form>
-
-          <div id="configWarning" class="notice notice-danger" hidden></div>
-        </div>
+      <section class="daily-summary">
+        <h3>Ringkasan Hari Ini</h3>
+        <div class="summary-row"><span><i class="summary-dot active"></i>Total User</span><strong id="sideTotal">0</strong></div>
+        <div class="summary-row"><span><i class="summary-dot active"></i>PC Online</span><strong id="sidePc">0</strong></div>
+        <div class="summary-row"><span><i class="summary-dot active"></i>Mobile Online</span><strong id="sideMobile">0</strong></div>
+        <div class="summary-row"><span><i class="summary-dot active"></i>Active License</span><strong id="sideActive">0</strong></div>
+        <div class="summary-row"><span><i class="summary-dot muted"></i>Expired</span><strong id="sideExpired">0</strong></div>
       </section>
 
-      <section id="dashboard" hidden>
+      <div class="sidebar-footer">
+        <span>© 2026 SkillFusion</span>
+        <strong>TF Analyzer Analyst</strong>
+        <button id="lockBtn" class="text-button" type="button">Lock Dashboard</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section id="dashboardSection" class="view-section active-section">
         <div class="stats-grid">
-          <article class="metric-card">
-            <span class="metric-label">Total User</span>
-            <strong id="statTotal">0</strong>
+          <article class="stat-card">
+            <div><span>TOTAL USER</span><strong id="statTotal">0</strong><small>Semua Terdaftar</small></div>
+            <div class="stat-icon">◎</div>
           </article>
-          <article class="metric-card">
-            <span class="metric-label">License Active</span>
-            <strong id="statActive">0</strong>
+          <article class="stat-card">
+            <div><span>LICENSE ACTIVE</span><strong id="statActive">0</strong><small>Lisensi Aktif</small></div>
+            <div class="stat-icon">◆</div>
           </article>
-          <article class="metric-card">
-            <span class="metric-label">PC Online</span>
-            <strong id="statPc">0</strong>
+          <article class="stat-card">
+            <div><span>PC ONLINE</span><strong id="statPc">0</strong><small>Perangkat PC Online</small></div>
+            <div class="stat-icon">▣</div>
           </article>
-          <article class="metric-card">
-            <span class="metric-label">Mobile Online</span>
-            <strong id="statMobile">0</strong>
+          <article class="stat-card">
+            <div><span>MOBILE ONLINE</span><strong id="statMobile">0</strong><small>Perangkat Mobile Online</small></div>
+            <div class="stat-icon">▯</div>
           </article>
         </div>
 
-        <div class="dashboard-grid">
-          <section class="glass-card add-card">
-            <div class="section-head">
-              <div>
-                <div class="card-kicker">ADD LICENSE</div>
-                <h3>Tambah User Baru</h3>
-              </div>
-            </div>
-            <form id="addUserForm" class="add-user-grid">
-              <label>
-                <span>Email</span>
-                <input id="newEmail" type="email" required placeholder="user@email.com" />
-              </label>
-              <label>
-                <span>Plan</span>
-                <select id="newPlan" required>
-                  <option value="">Pilih plan</option>
-                  <option value="TEST_1_DAY">Trial 1 Hari</option>
-                  <option value="MAIN_1M">1 Bulan</option>
-                  <option value="MAIN_3M">3 Bulan</option>
-                  <option value="MAIN_6M">6 Bulan</option>
-                  <option value="MAIN_1Y">1 Tahun</option>
-                  <option value="MAIN_PERMANENT">Permanent</option>
-                  <option value="BUNDLE_1M_ISIGNAL_1D">1 Bulan + iSignal 1 Hari</option>
-                  <option value="BUNDLE_1M_ISIGNAL_PREMIUM">1 Bulan + iSignal Premium</option>
-                  <option value="BUNDLE_3M_ISIGNAL_1D">3 Bulan + iSignal 1 Hari</option>
-                  <option value="BUNDLE_3M_ISIGNAL_PREMIUM">3 Bulan + iSignal Premium</option>
-                </select>
-              </label>
-              <button id="addUserBtn" class="btn btn-primary" type="submit">+ Tambah User</button>
-            </form>
+        <section class="panel search-panel">
+          <div class="search-box">
+            <span class="search-symbol">⌕</span>
+            <input id="searchInput" type="search" placeholder="Cari email, token, plan, status, device, license id, dll..." autocomplete="off" />
+            <span id="searchCount" class="search-count">0 user</span>
+          </div>
+        </section>
 
-            <div id="newTokenResult" class="token-banner" hidden>
-              <div>
-                <span>Token baru berhasil dibuat</span>
-                <strong id="newTokenValue">-</strong>
-              </div>
-              <button id="copyNewTokenBtn" class="btn btn-secondary" type="button">Copy Token</button>
-            </div>
-          </section>
-
-          <section class="glass-card info-card">
-            <div class="section-head compact">
-              <div>
-                <div class="card-kicker">STATUS</div>
-                <h3>Informasi Dashboard</h3>
-              </div>
-            </div>
-            <ul class="info-list">
-              <li><span class="dot pc"></span> Dot pertama = status <strong>PC</strong></li>
-              <li><span class="dot mobile"></span> Dot kedua = status <strong>Mobile</strong></li>
-              <li>Search mendukung email, token, plan, status, dan last seen.</li>
-              <li>Bulk action tersedia untuk <strong>SEND EMAIL ALL</strong> dan <strong>SEND EMAIL ALL UPDATE</strong>.</li>
-              <li>Data akan auto-refresh tiap 30 detik setelah login, jadi tombol refresh memang tidak diperlukan.</li>
-            </ul>
-          </section>
-        </div>
-
-        <section class="glass-card users-card">
-          <div class="users-head">
+        <section id="usersSection" class="panel users-panel">
+          <div class="panel-head">
             <div>
-              <div class="card-kicker">LICENSE USERS</div>
-              <h3>Daftar User</h3>
+              <div class="panel-kicker">DAFTAR USER</div>
+              <h2>License Users</h2>
             </div>
-            <div class="search-wrap">
-              <span class="search-icon">⌕</span>
-              <input id="searchInput" type="search" placeholder="Search email, token, plan, status, last seen..." />
-              <span id="searchCount" class="search-count"></span>
+            <div class="bulk-actions">
+              <button id="sendAllBtn" class="button button-success" type="button">✉ SEND EMAIL ALL</button>
+              <button id="sendAllUpdateBtn" class="button button-warning" type="button">✉ SEND EMAIL ALL UPDATE</button>
             </div>
           </div>
 
-          <div class="table-wrap desktop-only">
-            <table class="users-table">
+          <div class="table-scroll desktop-table">
+            <table>
               <thead>
                 <tr>
-                  <th class="status-col">Status</th>
+                  <th>Status</th>
                   <th>Email</th>
                   <th>Plan</th>
                   <th>Token</th>
                   <th>License</th>
                   <th>Last Seen PC</th>
                   <th>Last Seen Mobile</th>
-                  <th class="actions-col">Actions</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
             </table>
           </div>
 
-          <div id="mobileUsers" class="mobile-cards mobile-only"></div>
+          <div id="mobileUsers" class="mobile-users"></div>
           <div id="emptyState" class="empty-state" hidden>Tidak ada user yang cocok.</div>
 
-          <div class="bulk-bar">
+          <div class="pagination-bar">
+            <div id="pageSummary" class="page-summary">Menampilkan 0 data</div>
+            <div class="pagination-controls">
+              <button id="prevPageBtn" class="page-button" type="button">‹</button>
+              <div id="pageButtons" class="page-buttons"></div>
+              <button id="nextPageBtn" class="page-button" type="button">›</button>
+              <select id="pageSizeSelect" class="page-size" aria-label="Jumlah data per halaman">
+                <option value="5">5 / halaman</option>
+                <option value="10" selected>10 / halaman</option>
+                <option value="20">20 / halaman</option>
+                <option value="50">50 / halaman</option>
+              </select>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="addUserSection" class="view-section">
+        <section class="panel form-panel">
+          <div class="panel-head compact-head">
             <div>
-              <strong>Bulk Email</strong>
-              <p>Email hanya dikirim ke license yang masih aktif. Perhatikan kuota Gmail / Apps Script harian.</p>
+              <div class="panel-kicker">TAMBAH USER</div>
+              <h2>Buat License Baru</h2>
+              <p>Email + plan akan menghasilkan token baru dari backend.</p>
             </div>
-            <div class="bulk-actions">
-              <button id="sendAllBtn" class="btn btn-secondary" type="button">SEND EMAIL ALL</button>
-              <button id="sendAllUpdateBtn" class="btn btn-primary" type="button">SEND EMAIL ALL UPDATE</button>
+          </div>
+          <form id="addUserForm" class="add-form">
+            <label>
+              <span>Email</span>
+              <input id="newEmail" type="email" required placeholder="user@email.com" />
+            </label>
+            <label>
+              <span>Plan</span>
+              <select id="newPlan" required>
+                <option value="">Pilih plan</option>
+                <option value="TEST_1_DAY">Trial 1 Hari</option>
+                <option value="MAIN_1M">1 Bulan</option>
+                <option value="MAIN_3M">3 Bulan</option>
+                <option value="MAIN_6M">6 Bulan</option>
+                <option value="MAIN_1Y">1 Tahun</option>
+                <option value="MAIN_PERMANENT">Permanent</option>
+                <option value="BUNDLE_1M_ISIGNAL_1D">1 Bulan + iSignal 1 Hari</option>
+                <option value="BUNDLE_1M_ISIGNAL_PREMIUM">1 Bulan + iSignal Premium</option>
+                <option value="BUNDLE_3M_ISIGNAL_1D">3 Bulan + iSignal 1 Hari</option>
+                <option value="BUNDLE_3M_ISIGNAL_PREMIUM">3 Bulan + iSignal Premium</option>
+              </select>
+            </label>
+            <button class="button button-primary create-button" type="submit">+ Tambah User</button>
+          </form>
+
+          <div id="newTokenResult" class="token-result" hidden>
+            <div>
+              <span>TOKEN BARU</span>
+              <strong id="newTokenValue"></strong>
             </div>
+            <button id="copyNewTokenBtn" class="button button-secondary" type="button">Copy Token</button>
+          </div>
+        </section>
+      </section>
+
+      <section id="settingsSection" class="view-section">
+        <section class="panel settings-panel">
+          <div class="panel-head compact-head">
+            <div>
+              <div class="panel-kicker">PENGATURAN</div>
+              <h2>System Status</h2>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <article><span>Backend API</span><strong>Configured</strong><small>Apps Script /exec</small></article>
+            <article><span>Auto Refresh</span><strong>30 Detik</strong><small>Tanpa tombol refresh manual</small></article>
+            <article><span>Brand</span><strong>SkillFusion</strong><small>TF Analyzer Analyst</small></article>
           </div>
         </section>
       </section>
@@ -195,10 +233,8 @@
   </div>
 
   <div id="busyOverlay" class="busy-overlay" hidden>
-    <div class="busy-box">
-      <div class="spinner"></div>
-      <strong id="busyText">Memproses...</strong>
-    </div>
+    <div class="loader-ring"></div>
+    <strong id="busyText">Memproses...</strong>
   </div>
   <div id="toast" class="toast" hidden></div>
 
