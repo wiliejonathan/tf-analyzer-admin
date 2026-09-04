@@ -52,6 +52,8 @@
     customApiUrlInput: $("customApiUrlInput"), saveApiBtn: $("saveApiBtn"), resetApiBtn: $("resetApiBtn"), apiStatusLabel: $("apiStatusLabel"), apiStatusDot: $("apiStatusDot"), apiStatusText: $("apiStatusText"),
     autoRefreshToggle: $("autoRefreshToggle"), autoRefreshInterval: $("autoRefreshInterval"), autoRefreshLabel: $("autoRefreshLabel"), lastRefreshText: $("lastRefreshText"), rememberStatusLabel: $("rememberStatusLabel"), forgetSessionBtn: $("forgetSessionBtn"),
     planConfirmModal: $("planConfirmModal"), planConfirmText: $("planConfirmText"), planConfirmSummary: $("planConfirmSummary"), planConfirmCancel: $("planConfirmCancel"), planConfirmOk: $("planConfirmOk"),
+    emailEditModal: $("emailEditModal"), emailEditForm: $("emailEditForm"), emailEditCurrent: $("emailEditCurrent"), emailEditInput: $("emailEditInput"), emailEditCancel: $("emailEditCancel"),
+    deleteUserModal: $("deleteUserModal"), deleteUserText: $("deleteUserText"), deleteUserSummary: $("deleteUserSummary"), deleteUserNo: $("deleteUserNo"), deleteUserConfirm: $("deleteUserConfirm"),
     busyOverlay: $("busyOverlay"), busyText: $("busyText"), toast: $("toast")
   };
 
@@ -236,10 +238,23 @@
 
   function actionButtons(user) {
     const id = encodeURIComponent(user.licenseId || "");
+    const deleteButton = managementMode
+      ? `<button class="action-delete" data-action="delete_user" data-id="${id}" title="Delete User" aria-label="Delete user ${escapeHtml(user.email || "")}">×</button>`
+      : "";
     return `<button class="action-reset" data-action="reset_pc" data-id="${id}">Reset PC</button>
       <button class="action-reset" data-action="reset_mobile" data-id="${id}">Reset Mobile</button>
       <button class="action-mail" data-action="send_email" data-id="${id}">Email</button>
-      <button class="action-update" data-action="send_update_email" data-id="${id}">Update</button>`;
+      <button class="action-update" data-action="send_update_email" data-id="${id}">Update</button>${deleteButton}`;
+  }
+
+  function editableEmailHtml(user, query, compact = false) {
+    const email = user.email || "-";
+    if (!managementMode) return highlight(email, query);
+    const id = encodeURIComponent(user.licenseId || "");
+    return `<div class="email-manage${compact ? " compact" : ""}">
+      <button class="email-edit-button" type="button" data-action="edit_email" data-id="${id}" title="Edit email" aria-label="Edit email ${escapeHtml(email)}">✎</button>
+      <span class="email-value">${highlight(email, query)}</span>
+    </div>`;
   }
 
   function statusPill(user, query) {
@@ -261,7 +276,7 @@
   function tableRow(user, query) {
     return `<tr>
       <td class="status-cell">${statusDots(user)}</td>
-      <td>${highlight(user.email || "-", query)}</td>
+      <td>${editableEmailHtml(user, query)}</td>
       <td>${managementMode ? editablePlanHtml(user) : `<span class="plan-pill">${highlight(user.plan || "-", query)}</span>`}</td>
       <td><div class="token-box"><span class="token-text" title="${escapeHtml(user.token || "")}">${highlight(user.token || "-", query)}</span><button class="action-mail" data-action="copy" data-token="${escapeHtml(user.token || "")}">Copy</button></div></td>
       <td>${statusPill(user, query)}<div style="margin-top:4px;color:#63766f;font-size:8px">${highlight(user.licenseId || "", query)}</div></td>
@@ -273,7 +288,7 @@
 
   function mobileCard(user, query) {
     return `<article class="user-card">
-      <div class="user-card-top"><div><h3>${highlight(user.email || "-", query)}</h3><div class="license-id">${highlight(user.licenseId || "-", query)}</div></div><div>${statusDots(user)}</div></div>
+      <div class="user-card-top"><div><h3>${editableEmailHtml(user, query, true)}</h3><div class="license-id">${highlight(user.licenseId || "-", query)}</div></div><div>${statusDots(user)}</div></div>
       <div class="user-fields">
         <div class="user-field"><span>Plan</span><strong>${managementMode ? editablePlanHtml(user, true) : highlight(user.plan || "-", query)}</strong></div>
         <div class="user-field"><span>Status</span><strong>${statusPill(user, query)}</strong></div>
@@ -515,6 +530,125 @@
     catch (_) { showToast("Gagal menyalin token.", true); }
   });
 
+  let emailEditLicenseId = "";
+  let deleteUserResolver = null;
+
+  function openEmailEditModal(user) {
+    if (!user || !els.emailEditModal) return;
+    emailEditLicenseId = String(user.licenseId || "");
+    els.emailEditCurrent.textContent = user.email || "-";
+    els.emailEditInput.value = user.email || "";
+    els.emailEditModal.hidden = false;
+    els.emailEditModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    setTimeout(() => {
+      els.emailEditInput.focus();
+      els.emailEditInput.select();
+    }, 30);
+  }
+
+  function closeEmailEditModal() {
+    if (!els.emailEditModal || els.emailEditModal.hidden) return;
+    els.emailEditModal.hidden = true;
+    els.emailEditModal.setAttribute("aria-hidden", "true");
+    emailEditLicenseId = "";
+    if (!els.planConfirmModal || els.planConfirmModal.hidden) {
+      if (!els.deleteUserModal || els.deleteUserModal.hidden) document.body.classList.remove("modal-open");
+    }
+  }
+
+  els.emailEditCancel.addEventListener("click", closeEmailEditModal);
+  els.emailEditModal.addEventListener("click", (e) => {
+    if (e.target?.dataset?.modalDismiss === "true") closeEmailEditModal();
+  });
+  els.emailEditForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const licenseId = emailEditLicenseId;
+    const email = String(els.emailEditInput.value || "").trim().toLowerCase();
+    const user = users.find(u => u.licenseId === licenseId);
+    if (!licenseId || !user) return closeEmailEditModal();
+    if (!email || !els.emailEditInput.checkValidity()) {
+      els.emailEditInput.reportValidity();
+      return;
+    }
+    if (email === normalizedEmail(user)) {
+      closeEmailEditModal();
+      return;
+    }
+
+    const previousEmail = user.email || "";
+    setBusy(true, "Mengubah email user...");
+    try {
+      const result = await callApi("update_email", { licenseId, email });
+      const updated = result?.user || result?.result?.user || null;
+      if (updated) {
+        const index = users.findIndex(u => u.licenseId === licenseId);
+        if (index >= 0) users[index] = updated;
+        users = sortUsersForDisplay(users);
+        updateStats();
+        renderUsers();
+      } else {
+        await loadUsers(true);
+      }
+      closeEmailEditModal();
+      showToast(`Email ${previousEmail} berhasil diubah menjadi ${email}.`);
+    } catch (err) {
+      showToast(err.message || String(err), true);
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  function closeDeleteUserModal(result) {
+    if (!els.deleteUserModal || els.deleteUserModal.hidden) return;
+    els.deleteUserModal.hidden = true;
+    els.deleteUserModal.setAttribute("aria-hidden", "true");
+    if (!els.planConfirmModal || els.planConfirmModal.hidden) {
+      if (!els.emailEditModal || els.emailEditModal.hidden) document.body.classList.remove("modal-open");
+    }
+    const resolve = deleteUserResolver;
+    deleteUserResolver = null;
+    if (resolve) resolve(!!result);
+  }
+
+  function confirmDeleteUser(user) {
+    els.deleteUserText.textContent = `User ${user?.email || user?.licenseId || "ini"} akan dihapus permanen dari Licenses.`;
+    els.deleteUserSummary.innerHTML = `
+      <div><span>Email</span><strong>${escapeHtml(user?.email || "-")}</strong></div>
+      <div><span>License ID</span><strong>${escapeHtml(user?.licenseId || "-")}</strong></div>
+      <small>Setelah Confirm, user tidak lagi terdaftar dan token/license tersebut tidak dapat digunakan. Aksi ini tidak dijalankan jika Anda memilih No.</small>`;
+    els.deleteUserModal.hidden = false;
+    els.deleteUserModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    setTimeout(() => els.deleteUserNo.focus(), 30);
+    return new Promise(resolve => { deleteUserResolver = resolve; });
+  }
+
+  els.deleteUserNo.addEventListener("click", () => closeDeleteUserModal(false));
+  els.deleteUserConfirm.addEventListener("click", () => closeDeleteUserModal(true));
+  els.deleteUserModal.addEventListener("click", (e) => {
+    if (e.target?.dataset?.modalDismiss === "true") closeDeleteUserModal(false);
+  });
+
+  async function executeDeleteUser(user) {
+    if (!user?.licenseId) return;
+    const ok = await confirmDeleteUser(user);
+    if (!ok) return;
+    setBusy(true, "Menghapus user...");
+    try {
+      await callApi("delete_user", { licenseId: user.licenseId });
+      users = users.filter(u => u.licenseId !== user.licenseId);
+      updateStats();
+      renderUsers();
+      showToast(`User ${user.email || user.licenseId} berhasil dihapus.`);
+      loadUsers(true).catch(() => {});
+    } catch (err) {
+      showToast(err.message || String(err), true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function executeUserAction(btn) {
     const action = btn.dataset.action;
     if (action === "copy") {
@@ -525,6 +659,14 @@
     const licenseId = decodeURIComponent(btn.dataset.id || "");
     if (!licenseId) return;
     const user = users.find(u => u.licenseId === licenseId);
+    if (action === "edit_email") {
+      openEmailEditModal(user);
+      return;
+    }
+    if (action === "delete_user") {
+      await executeDeleteUser(user);
+      return;
+    }
     const label = user?.email || licenseId;
     const messages = {
       reset_pc: `Reset slot PC untuk ${label}?`,
@@ -576,7 +718,10 @@
     if (e.target?.dataset?.modalDismiss === "true") closePlanConfirmModal(false);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && els.planConfirmModal && !els.planConfirmModal.hidden) closePlanConfirmModal(false);
+    if (e.key !== "Escape") return;
+    if (els.planConfirmModal && !els.planConfirmModal.hidden) return closePlanConfirmModal(false);
+    if (els.emailEditModal && !els.emailEditModal.hidden) return closeEmailEditModal();
+    if (els.deleteUserModal && !els.deleteUserModal.hidden) return closeDeleteUserModal(false);
   });
 
   async function executePlanChange(select) {

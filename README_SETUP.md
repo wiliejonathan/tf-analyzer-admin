@@ -1,22 +1,35 @@
-# TF Analyzer Analyst — License Admin REV302
+# TF Analyzer Analyst — License Admin REV307
 
-## Backend API
-Sudah hardcoded ke:
-https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec
+## Isi paket
+- `index.html`, `styles.css`, `app.js`, `config.js` — frontend GitHub Pages.
+- `assets/` — logo WebP ringan dari REV306.
+- `TF_Analyzer_Apps_Script_REV307_USER_MANAGEMENT.gs` — backend lengkap dengan command `update_email` dan `delete_user`.
 
-## Publish GitHub Pages
-1. Extract ZIP.
-2. Upload isi folder `github-pages/` ke ROOT repo `tf-analyzer-admin`.
-3. Replace file versi lama.
-4. GitHub Settings → Pages → Deploy from branch `main` / root.
-5. Tunggu GitHub Pages selesai deploy.
-6. Buka halaman lalu lakukan hard refresh satu kali.
+## 1. Deploy Backend Google Apps Script
+1. Buka project Apps Script TF Analyzer yang saat ini dipakai.
+2. Backup source lama.
+3. Gunakan source `TF_Analyzer_Apps_Script_REV307_USER_MANAGEMENT.gs` dari paket ini.
+4. Deploy → Manage deployments → Edit/New version → Web app.
+5. Pastikan akses deployment sama seperti deployment sebelumnya.
+6. Salin URL Web App yang berakhiran `/exec`.
 
-## Desain
-- Primary brand: TF Analyzer Analyst
-- Parent branding: SkillFusion, dibuat compact di kanan atas
-- Desktop: sidebar + table
-- Tablet: sidebar lebih kecil
-- Mobile: navigation horizontal + user cards
-- Tombol Refresh manual dihapus
-- Auto refresh data setiap 30 detik setelah login
+## 2. Set API Frontend
+Buka `config.js` dan pastikan `apiUrl` berisi URL `/exec` dari deployment aktif.
+
+## 3. Publish GitHub Pages
+Upload file frontend berikut ke root repo admin:
+- `index.html`
+- `styles.css`
+- `app.js`
+- `config.js`
+- folder `assets/`
+
+Kemudian lakukan hard refresh browser.
+
+## Fitur Manajemen User REV307
+- Pencil di kiri email → edit email user.
+- Email baru dicek format dan duplikat di backend.
+- TOKEN, LICENSE_ID, plan dan device tidak diubah ketika email diganti.
+- X setelah Update → popup **No | Confirm**.
+- Hanya **Confirm** yang mengirim command delete ke backend.
+- Delete menghapus row user/license sehingga token/license tersebut tidak lagi terdaftar.
