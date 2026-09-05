@@ -1,14 +1,14 @@
-# TF Analyzer Analyst — License Admin REV307
+# TF Analyzer Analyst — License Admin REV308
 
 ## Isi paket
 - `index.html`, `styles.css`, `app.js`, `config.js` — frontend GitHub Pages.
 - `assets/` — logo WebP ringan dari REV306.
-- `TF_Analyzer_Apps_Script_REV307_USER_MANAGEMENT.gs` — backend lengkap dengan command `update_email` dan `delete_user`.
+- `TF_Analyzer_Apps_Script_REV308_RESET_ALL.gs` — backend lengkap dengan command `update_email`, `delete_user`, dan `reset_all`.
 
 ## 1. Deploy Backend Google Apps Script
 1. Buka project Apps Script TF Analyzer yang saat ini dipakai.
 2. Backup source lama.
-3. Gunakan source `TF_Analyzer_Apps_Script_REV307_USER_MANAGEMENT.gs` dari paket ini.
+3. Gunakan source `TF_Analyzer_Apps_Script_REV308_RESET_ALL.gs` dari paket ini.
 4. Deploy → Manage deployments → Edit/New version → Web app.
 5. Pastikan akses deployment sama seperti deployment sebelumnya.
 6. Salin URL Web App yang berakhiran `/exec`.
@@ -26,7 +26,9 @@ Upload file frontend berikut ke root repo admin:
 
 Kemudian lakukan hard refresh browser.
 
-## Fitur Manajemen User REV307
+## Fitur Manajemen User REV308
+- **RESET ALL**: reset slot PC + Mobile seluruh user sekaligus, status menjadi OFFLINE.
+- Reset massal tidak menghapus token, email, plan, LICENSE_ID, atau masa aktif.
 - Pencil di kiri email → edit email user.
 - Email baru dicek format dan duplikat di backend.
 - TOKEN, LICENSE_ID, plan dan device tidak diubah ketika email diganti.

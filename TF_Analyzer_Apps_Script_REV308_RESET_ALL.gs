@@ -1,5 +1,11 @@
 /**
- * TF MULTI-ANALYST SCANNER — LICENSE BACKEND REV292 MANUAL ROW AUTO-ADMIN + DATE FORMAT
+ * TF ANALYZER ANALYST — LICENSE BACKEND REV308 RESET ALL
+ * REV308 ADDITION:
+ * - Admin Dashboard command reset_all resets PC + Mobile slots for every license row.
+ * - TOKEN, EMAIL, PLAN, LICENSE_ID, and expiry data are preserved.
+ * - ONLINE_STATUS and ONLINE_STATUS_MOBILE are forced OFFLINE after mass reset.
+ *
+ * BASE: TF MULTI-ANALYST SCANNER — LICENSE BACKEND REV292 MANUAL ROW AUTO-ADMIN + DATE FORMAT
  * REV292 FIX:
  * - Manual EMAIL + PLAN creation now auto-fills PC/Mobile ONLINE status as OFFLINE.
  * - Manual rows auto-create RESET PC / RESET MOBILE and SEND EMAIL buttons.
@@ -527,6 +533,74 @@ function adminDashboardBulkEmailV298_(updateEmail) {
   };
 }
 
+
+// REV308 — bulk reset all PC + Mobile slots from Admin Dashboard.
+// Preserves TOKEN, EMAIL, PLAN, LICENSE_ID and expiry data.
+function adminDashboardResetAllDevicesV308_() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sheet = getLicensesSheet_();
+    assertLicenseDeviceHeaders_(sheet);
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2) {
+      return { success: true, command: 'reset_all', resetCount: 0, pcResetCount: 0, mobileResetCount: 0 };
+    }
+
+    const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+      .map(function(h) { return String(h || '').trim(); });
+    const map = headerMapFromArray_(headers);
+    if (map.LICENSE_ID === undefined) throw new Error('Missing column: LICENSE_ID');
+
+    const rowCount = lastRow - 1;
+    const licenseValues = sheet.getRange(2, map.LICENSE_ID + 1, rowCount, 1).getDisplayValues();
+    const resetCount = licenseValues.reduce(function(total, row) {
+      return total + (String(row[0] || '').trim() ? 1 : 0);
+    }, 0);
+
+    const pcBlankFields = [
+      'ACTIVE_DEVICE_ID','ACTIVE_PUBLIC_KEY','ACTIVE_SESSION_ID','DEVICE_NAME','FCM_REGISTRATION_ID',
+      'PENDING_REQUEST_ID','PENDING_DEVICE_ID','PENDING_PUBLIC_KEY','PENDING_FCM_ID','PENDING_STATUS',
+      'PENDING_REQUESTED_AT','LAST_SEEN_AT','LAST_ONLINE'
+    ];
+    const mobileBlankFields = [
+      'MOBILE_ACTIVE_DEVICE_ID','MOBILE_ACTIVE_PUBLIC_KEY','MOBILE_ACTIVE_SESSION_ID','MOBILE_DEVICE_NAME',
+      'MOBILE_FCM_REGISTRATION_ID','MOBILE_PENDING_REQUEST_ID','MOBILE_PENDING_DEVICE_ID',
+      'MOBILE_PENDING_PUBLIC_KEY','MOBILE_PENDING_FCM_ID','MOBILE_PENDING_STATUS',
+      'MOBILE_PENDING_REQUESTED_AT','MOBILE_LAST_SEEN_AT'
+    ];
+
+    function writeColumn_(header, value) {
+      if (map[header] === undefined) return;
+      const range = sheet.getRange(2, map[header] + 1, rowCount, 1);
+      const current = range.getValues();
+      for (let i = 0; i < rowCount; i++) {
+        if (String(licenseValues[i][0] || '').trim()) current[i][0] = value;
+      }
+      range.setValues(current);
+    }
+
+    pcBlankFields.forEach(function(header) { writeColumn_(header, ''); });
+    mobileBlankFields.forEach(function(header) { writeColumn_(header, ''); });
+    writeColumn_('ONLINE_STATUS', 'OFFLINE');
+    writeColumn_('ONLINE_STATUS_MOBILE', 'OFFLINE');
+
+    SpreadsheetApp.flush();
+    return {
+      success: true,
+      command: 'reset_all',
+      resetCount: resetCount,
+      pcResetCount: resetCount,
+      mobileResetCount: resetCount,
+      tokenPreserved: true,
+      licenseIdPreserved: true
+    };
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
+  }
+}
+
 function handleAdminDashboardRequestV298_(body) {
   assertAdminDashboardKeyV298_(body);
   const command = String(body && body.command || '').trim().toLowerCase();
@@ -581,6 +655,9 @@ function handleAdminDashboardRequestV298_(body) {
   ) {
     const result = adminDashboardSingleActionV298_(command, body);
     return { success: true, ok: true, result: result };
+  }
+  if (command === 'reset_all') {
+    return Object.assign({ ok: true }, adminDashboardResetAllDevicesV308_());
   }
   if (command === 'send_email_all') {
     return Object.assign({ ok: true }, adminDashboardBulkEmailV298_(false));

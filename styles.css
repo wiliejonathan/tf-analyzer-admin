@@ -180,6 +180,8 @@ button { cursor: pointer; }
 .button-primary { background: linear-gradient(180deg, #12c763, #078a46); border-color: rgba(20,224,110,.33); }
 .button-success { background: linear-gradient(180deg, #31bc5c, #178a43); border-color: rgba(52,211,100,.35); }
 .button-warning { background: linear-gradient(180deg, #ffbe25, #e29a00); border-color: #f6ad0a; color: #1c1a0c; }
+.button-reset-all { background: linear-gradient(180deg, #ef5364, #bd2537); border-color: rgba(255,111,128,.48); color: #fff; box-shadow: 0 8px 22px rgba(189,37,55,.16); }
+.button-reset-all:hover { filter: brightness(1.1); }
 .button-secondary { background: linear-gradient(180deg, #4b8df4, #346ece); border-color: rgba(102,157,255,.45); }
 .table-scroll { width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 1100px; }
@@ -790,4 +792,29 @@ body.modal-open { overflow: hidden; }
   .user-card h3 .email-manage { font-size: 13px; }
   .email-edit-button { width: 29px; height: 29px; min-width: 29px; }
   .delete-summary > div { grid-template-columns: 1fr; gap: 3px; }
+}
+
+
+/* REV308 — Reset ALL PC + Mobile */
+.reset-all-dialog { border-color: rgba(255, 100, 115, .28); }
+.reset-all-icon { background: rgba(239, 83, 100, .12); border-color: rgba(239, 83, 100, .24); color: #ff8693; font-size: 19px; }
+.reset-all-kicker { color: #ff8996; }
+.reset-all-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+.reset-all-summary > div { min-width: 0; padding: 9px; border-radius: 8px; background: rgba(0,0,0,.11); }
+.reset-all-summary span { display: block; color: #788d85; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.reset-all-summary strong { display: block; color: #f0f6f3; font-size: 11px; overflow-wrap: anywhere; }
+.reset-all-summary small { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.05); padding-top: 10px; color: #83978f; font-size: 10px; line-height: 1.5; }
+.reset-all-confirm { background: linear-gradient(180deg, #ef5364, #b92336); border-color: rgba(255,111,128,.44); color: #fff; }
+@media (max-width: 560px) {
+  .reset-all-summary { grid-template-columns: 1fr; }
+  .reset-all-summary small { grid-column: auto; }
 }

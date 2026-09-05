@@ -48,12 +48,13 @@
     statTotal: $("statTotal"), statActive: $("statActive"), statPc: $("statPc"), statMobile: $("statMobile"), sideTotal: $("sideTotal"), sidePc: $("sidePc"), sideMobile: $("sideMobile"), sideActive: $("sideActive"), sideExpired: $("sideExpired"),
     searchInput: $("searchInput"), searchCount: $("searchCount"), usersBody: $("usersBody"), mobileUsers: $("mobileUsers"), emptyState: $("emptyState"),
     addUserForm: $("addUserForm"), newEmail: $("newEmail"), newPlan: $("newPlan"), newTokenResult: $("newTokenResult"), newTokenValue: $("newTokenValue"), copyNewTokenBtn: $("copyNewTokenBtn"),
-    sendAllBtn: $("sendAllBtn"), sendAllUpdateBtn: $("sendAllUpdateBtn"), prevPageBtn: $("prevPageBtn"), nextPageBtn: $("nextPageBtn"), pageButtons: $("pageButtons"), pageSummary: $("pageSummary"), pageSizeSelect: $("pageSizeSelect"),
+    resetAllBtn: $("resetAllBtn"), sendAllBtn: $("sendAllBtn"), sendAllUpdateBtn: $("sendAllUpdateBtn"), prevPageBtn: $("prevPageBtn"), nextPageBtn: $("nextPageBtn"), pageButtons: $("pageButtons"), pageSummary: $("pageSummary"), pageSizeSelect: $("pageSizeSelect"),
     customApiUrlInput: $("customApiUrlInput"), saveApiBtn: $("saveApiBtn"), resetApiBtn: $("resetApiBtn"), apiStatusLabel: $("apiStatusLabel"), apiStatusDot: $("apiStatusDot"), apiStatusText: $("apiStatusText"),
     autoRefreshToggle: $("autoRefreshToggle"), autoRefreshInterval: $("autoRefreshInterval"), autoRefreshLabel: $("autoRefreshLabel"), lastRefreshText: $("lastRefreshText"), rememberStatusLabel: $("rememberStatusLabel"), forgetSessionBtn: $("forgetSessionBtn"),
     planConfirmModal: $("planConfirmModal"), planConfirmText: $("planConfirmText"), planConfirmSummary: $("planConfirmSummary"), planConfirmCancel: $("planConfirmCancel"), planConfirmOk: $("planConfirmOk"),
     emailEditModal: $("emailEditModal"), emailEditForm: $("emailEditForm"), emailEditCurrent: $("emailEditCurrent"), emailEditInput: $("emailEditInput"), emailEditCancel: $("emailEditCancel"),
     deleteUserModal: $("deleteUserModal"), deleteUserText: $("deleteUserText"), deleteUserSummary: $("deleteUserSummary"), deleteUserNo: $("deleteUserNo"), deleteUserConfirm: $("deleteUserConfirm"),
+    resetAllModal: $("resetAllModal"), resetAllNo: $("resetAllNo"), resetAllConfirm: $("resetAllConfirm"),
     busyOverlay: $("busyOverlay"), busyText: $("busyText"), toast: $("toast")
   };
 
@@ -721,6 +722,7 @@
     if (e.key !== "Escape") return;
     if (els.planConfirmModal && !els.planConfirmModal.hidden) return closePlanConfirmModal(false);
     if (els.emailEditModal && !els.emailEditModal.hidden) return closeEmailEditModal();
+    if (els.resetAllModal && !els.resetAllModal.hidden) return closeResetAllModal(false);
     if (els.deleteUserModal && !els.deleteUserModal.hidden) return closeDeleteUserModal(false);
   });
 
@@ -777,6 +779,54 @@
     if (select) executePlanChange(select);
   });
 
+
+  let resetAllResolver = null;
+
+  function closeResetAllModal(result) {
+    if (!els.resetAllModal || els.resetAllModal.hidden) return;
+    els.resetAllModal.hidden = true;
+    els.resetAllModal.setAttribute("aria-hidden", "true");
+    if (!els.deleteUserModal || els.deleteUserModal.hidden) {
+      if (!els.planConfirmModal || els.planConfirmModal.hidden) {
+        if (!els.emailEditModal || els.emailEditModal.hidden) document.body.classList.remove("modal-open");
+      }
+    }
+    const resolve = resetAllResolver;
+    resetAllResolver = null;
+    if (resolve) resolve(!!result);
+  }
+
+  function confirmResetAll() {
+    if (!els.resetAllModal) return Promise.resolve(false);
+    els.resetAllModal.hidden = false;
+    els.resetAllModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    setTimeout(() => els.resetAllNo?.focus(), 30);
+    return new Promise(resolve => { resetAllResolver = resolve; });
+  }
+
+  if (els.resetAllNo) els.resetAllNo.addEventListener("click", () => closeResetAllModal(false));
+  if (els.resetAllConfirm) els.resetAllConfirm.addEventListener("click", () => closeResetAllModal(true));
+  if (els.resetAllModal) els.resetAllModal.addEventListener("click", (e) => {
+    if (e.target?.dataset?.resetAllDismiss === "true") closeResetAllModal(false);
+  });
+
+  async function executeResetAll() {
+    const ok = await confirmResetAll();
+    if (!ok) return;
+    setBusy(true, "Mereset PC + Mobile untuk semua user...");
+    try {
+      const result = await callApi("reset_all", {}, { timeoutMs: 30000 });
+      await loadUsers(true);
+      const count = Number(result?.resetCount ?? result?.result?.resetCount ?? 0);
+      showToast(`Reset ALL berhasil. PC + Mobile ${count} user sudah direset dan dibuat OFFLINE.`);
+    } catch (err) {
+      showToast(err.message || String(err), true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function bulkEmail(command, update) {
     const text = update ? "Kirim EMAIL UPDATE ke SEMUA license yang masih aktif?" : "Kirim EMAIL TOKEN ke SEMUA license yang masih aktif?";
     if (!confirm(text + "\n\nPerhatikan kuota email harian Apps Script/Gmail.")) return;
@@ -788,6 +838,7 @@
     finally { setBusy(false); }
   }
 
+  if (els.resetAllBtn) els.resetAllBtn.addEventListener("click", executeResetAll);
   els.sendAllBtn.addEventListener("click", () => bulkEmail("send_email_all", false));
   els.sendAllUpdateBtn.addEventListener("click", () => bulkEmail("send_update_email_all", true));
 

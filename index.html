@@ -136,6 +136,7 @@
               <h2>License Users</h2>
             </div>
             <div class="bulk-actions">
+              <button id="resetAllBtn" class="button button-reset-all" type="button" title="Reset slot PC + Mobile untuk semua user">↻ RESET ALL</button>
               <button id="sendAllBtn" class="button button-success" type="button">✉ SEND EMAIL ALL</button>
               <button id="sendAllUpdateBtn" class="button button-warning" type="button">✉ SEND EMAIL ALL UPDATE</button>
             </div>
@@ -343,6 +344,28 @@
       <div class="confirm-actions">
         <button id="deleteUserNo" class="button confirm-cancel" type="button">No</button>
         <button id="deleteUserConfirm" class="button delete-confirm" type="button">Confirm</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="resetAllModal" class="confirm-modal reset-all-modal" hidden aria-hidden="true">
+    <div class="confirm-backdrop" data-reset-all-dismiss="true"></div>
+    <section class="confirm-dialog reset-all-dialog" role="dialog" aria-modal="true" aria-labelledby="resetAllTitle">
+      <div class="confirm-icon reset-all-icon">↻</div>
+      <div class="confirm-copy">
+        <div class="panel-kicker reset-all-kicker">RESET MASSAL PERANGKAT</div>
+        <h3 id="resetAllTitle">Reset ALL PC + Mobile?</h3>
+        <p>Tindakan ini akan mereset slot perangkat <strong>PC dan Mobile untuk seluruh user</strong>, termasuk user yang sedang online.</p>
+        <div class="reset-all-summary">
+          <div><span>Target</span><strong>SEMUA USER</strong></div>
+          <div><span>PC</span><strong>RESET + OFFLINE</strong></div>
+          <div><span>Mobile</span><strong>RESET + OFFLINE</strong></div>
+          <small>Token, email, plan, LICENSE_ID, dan masa aktif tetap dipertahankan. Filter pencarian/pagination tidak membatasi aksi ini.</small>
+        </div>
+      </div>
+      <div class="confirm-actions">
+        <button id="resetAllNo" class="button confirm-cancel" type="button">No</button>
+        <button id="resetAllConfirm" class="button reset-all-confirm" type="button">Confirm Reset ALL</button>
       </div>
     </section>
   </div>
