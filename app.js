@@ -424,6 +424,13 @@
     els.toggleAdminKeyVisibility.setAttribute("aria-pressed", visible ? "true" : "false");
     els.toggleAdminKeyVisibility.setAttribute("aria-label", visible ? "Sembunyikan Admin Key" : "Tampilkan Admin Key");
     els.toggleAdminKeyVisibility.title = visible ? "Sembunyikan Admin Key" : "Tampilkan Admin Key";
+
+    // REV311: force icon state inline as well as via CSS. This avoids stale/cached CSS
+    // or browser default styles turning the eye button into a grey box.
+    const eyeOpen = els.toggleAdminKeyVisibility.querySelector(".eye-open");
+    const eyeClosed = els.toggleAdminKeyVisibility.querySelector(".eye-closed");
+    if (eyeOpen) eyeOpen.style.display = visible ? "none" : "block";
+    if (eyeClosed) eyeClosed.style.display = visible ? "block" : "none";
   }
 
   function clearRememberedLogin() {
