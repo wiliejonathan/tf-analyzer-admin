@@ -31,9 +31,21 @@
 
       <form id="loginForm" class="auth-form">
         <label for="adminKeyInput">Admin Dashboard Key</label>
-        <div class="input-shell">
+        <div class="input-shell admin-key-shell">
           <span class="input-icon">●</span>
-          <input id="adminKeyInput" type="password" autocomplete="off" required placeholder="Masukkan admin key" />
+          <input id="adminKeyInput" type="password" autocomplete="current-password" required placeholder="Masukkan admin key" />
+          <button id="toggleAdminKeyVisibility" class="password-toggle" type="button" aria-label="Tampilkan Admin Key" title="Tampilkan Admin Key" aria-pressed="false">
+            <svg class="eye-icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.3 12s3.4-6 9.7-6 9.7 6 9.7 6-3.4 6-9.7 6-9.7-6-9.7-6Z"></path>
+              <circle cx="12" cy="12" r="2.7"></circle>
+            </svg>
+            <svg class="eye-icon eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3l18 18"></path>
+              <path d="M10.6 6.2A10.7 10.7 0 0 1 12 6c6.3 0 9.7 6 9.7 6a16 16 0 0 1-3 3.8"></path>
+              <path d="M6.2 6.3C3.7 8.1 2.3 12 2.3 12s3.4 6 9.7 6c1.7 0 3.2-.4 4.5-1"></path>
+              <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+            </svg>
+          </button>
         </div>
         <label class="remember-row" for="rememberAdminKey">
           <input id="rememberAdminKey" type="checkbox" />

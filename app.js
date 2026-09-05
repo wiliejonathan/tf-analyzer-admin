@@ -43,7 +43,7 @@
 
   const $ = (id) => document.getElementById(id);
   const els = {
-    loginView: $("loginView"), appView: $("appView"), loginForm: $("loginForm"), adminKeyInput: $("adminKeyInput"), rememberAdminKey: $("rememberAdminKey"), configWarning: $("configWarning"),
+    loginView: $("loginView"), appView: $("appView"), loginForm: $("loginForm"), adminKeyInput: $("adminKeyInput"), toggleAdminKeyVisibility: $("toggleAdminKeyVisibility"), rememberAdminKey: $("rememberAdminKey"), configWarning: $("configWarning"),
     lockBtn: $("lockBtn"), dashboardSection: $("dashboardSection"), addUserSection: $("addUserSection"), settingsSection: $("settingsSection"), usersSection: $("usersSection"),
     statTotal: $("statTotal"), statActive: $("statActive"), statPc: $("statPc"), statMobile: $("statMobile"), sideTotal: $("sideTotal"), sidePc: $("sidePc"), sideMobile: $("sideMobile"), sideActive: $("sideActive"), sideExpired: $("sideExpired"),
     searchInput: $("searchInput"), searchCount: $("searchCount"), usersBody: $("usersBody"), mobileUsers: $("mobileUsers"), emptyState: $("emptyState"),
@@ -411,6 +411,21 @@
     return String(localStorage.getItem(STORAGE.adminKey) || "").trim();
   }
 
+  function isDefinitiveAdminAuthError(error) {
+    const message = String(error && error.message || error || "").toUpperCase();
+    return /(^|\b)(ADMIN_UNAUTHORIZED|UNAUTHORIZED_GATEWAY|INVALID_ADMIN_KEY|ADMIN_KEY_INVALID)(\b|$)/.test(message);
+  }
+
+  function setAdminKeyVisibility(show) {
+    const visible = !!show;
+    if (!els.adminKeyInput || !els.toggleAdminKeyVisibility) return;
+    els.adminKeyInput.type = visible ? "text" : "password";
+    els.toggleAdminKeyVisibility.classList.toggle("is-visible", visible);
+    els.toggleAdminKeyVisibility.setAttribute("aria-pressed", visible ? "true" : "false");
+    els.toggleAdminKeyVisibility.setAttribute("aria-label", visible ? "Sembunyikan Admin Key" : "Tampilkan Admin Key");
+    els.toggleAdminKeyVisibility.title = visible ? "Sembunyikan Admin Key" : "Tampilkan Admin Key";
+  }
+
   function clearRememberedLogin() {
     localStorage.removeItem(STORAGE.remember);
     localStorage.removeItem(STORAGE.adminKey);
@@ -483,7 +498,19 @@
       return true;
     } catch (err) {
       adminKey = "";
-      if (automatic || /UNAUTHORIZED|ADMIN_/i.test(err.message || "")) clearRememberedLogin();
+      // REV310: jangan hapus Remember hanya karena reload/auto-login mengalami timeout,
+      // network error, Apps Script belum siap, atau error command sementara.
+      // Saved key hanya dihapus jika backend secara eksplisit menyatakan key tidak sah.
+      if (isDefinitiveAdminAuthError(err)) {
+        clearRememberedLogin();
+      } else {
+        const savedKey = getSavedAdminKey();
+        if (savedKey) {
+          els.adminKeyInput.value = savedKey;
+          els.rememberAdminKey.checked = localStorage.getItem(STORAGE.remember) === "true";
+          updateRememberUi();
+        }
+      }
       showToast(err.message || "Login admin gagal.", true);
       return false;
     } finally {
@@ -491,10 +518,25 @@
     }
   }
 
+  els.toggleAdminKeyVisibility?.addEventListener("click", () => {
+    setAdminKeyVisibility(els.adminKeyInput.type === "password");
+    els.adminKeyInput.focus({ preventScroll: true });
+    const len = els.adminKeyInput.value.length;
+    try { els.adminKeyInput.setSelectionRange(len, len); } catch (_) {}
+  });
+
   els.loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!ensureConfigured()) return;
     await loginWithKey(els.adminKeyInput.value, els.rememberAdminKey.checked, false);
+  });
+
+  els.rememberAdminKey.addEventListener("change", () => {
+    if (!els.rememberAdminKey.checked) {
+      localStorage.removeItem(STORAGE.remember);
+      localStorage.removeItem(STORAGE.adminKey);
+      updateRememberUi();
+    }
   });
 
   document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => activateNav(btn.dataset.nav)));
@@ -1021,6 +1063,7 @@
   });
 
   function boot() {
+    setAdminKeyVisibility(false);
     ensureConfigured();
     updateApiSettingsUi();
     updateAutoRefreshUi();

@@ -61,6 +61,35 @@ button { cursor: pointer; }
 .input-shell { min-height: 46px; display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 11px; padding: 0 12px; background: #061712; }
 .input-icon { color: var(--green); font-size: 9px; }
 .input-shell input { flex: 1; min-width: 0; border: 0; outline: 0; color: var(--text); background: transparent; }
+.admin-key-shell { padding-right: 7px; }
+.password-toggle {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8fa39b;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.password-toggle:hover { background: rgba(255,255,255,.055); color: #dce8e3; }
+.password-toggle:focus-visible { outline: 2px solid rgba(16,200,101,.72); outline-offset: 1px; }
+.password-toggle:active { transform: scale(.96); }
+.password-toggle .eye-icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.password-toggle .eye-closed { display: none; }
+.password-toggle.is-visible .eye-open { display: none; }
+.password-toggle.is-visible .eye-closed { display: block; }
 .auth-foot { margin-top: 14px; color: #6f827b; font-size: 11px; text-align: center; }
 .alert { margin-top: 12px; border-radius: 10px; padding: 10px 12px; font-size: 12px; }
 .alert-error { border: 1px solid rgba(226,76,92,.30); background: rgba(226,76,92,.10); color: #ffadb7; }

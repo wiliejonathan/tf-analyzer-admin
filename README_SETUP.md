@@ -42,3 +42,10 @@ Kemudian lakukan hard refresh browser.
 - Jika deployment Apps Script aktif masih versi lama dan membalas `UNKNOWN_ADMIN_COMMAND`, frontend otomatis fallback ke command lama `reset_pc` + `reset_mobile` untuk setiap LICENSE_ID.
 - Dengan fallback ini, RESET ALL tetap dapat dipakai tanpa menunggu backend baru aktif.
 - Untuk performa terbaik tetap disarankan deploy backend REV309 sebagai New Version pada deployment `/exec` yang sama.
+
+
+## REV310 — Remember Admin Key & Show/Hide
+- Remember tidak lagi dihapus akibat timeout/network error saat reload.
+- Key hanya di-forget otomatis saat backend menyatakan kredensial admin tidak sah.
+- Ikon mata pada kolom Admin Dashboard Key menampilkan/menyembunyikan key.
+- Backend tetap kompatibel dengan Apps Script REV309.
