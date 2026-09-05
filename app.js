@@ -811,15 +811,130 @@
     if (e.target?.dataset?.resetAllDismiss === "true") closeResetAllModal(false);
   });
 
+  // REV309 compatibility fallback:
+  // Older deployed Apps Script revisions do not know the bulk `reset_all` command,
+  // but they already support per-user `reset_pc` and `reset_mobile`. If the
+  // active /exec answers UNKNOWN_ADMIN_COMMAND, reset every license through
+  // those proven legacy commands instead of failing the whole action.
+  async function resetAllViaLegacyCommandsV309() {
+    const snapshot = await fetchUsersWithRecovery();
+    const targets = (Array.isArray(snapshot.list) ? snapshot.list : [])
+      .map(user => ({
+        licenseId: String(user?.licenseId || "").trim(),
+        label: String(user?.email || user?.licenseId || "user").trim()
+      }))
+      .filter(item => !!item.licenseId);
+
+    if (!targets.length) {
+      return {
+        compatibilityFallback: true,
+        attempted: 0,
+        resetCount: 0,
+        pcResetCount: 0,
+        mobileResetCount: 0,
+        failures: []
+      };
+    }
+
+    let cursor = 0;
+    let processed = 0;
+    let pcResetCount = 0;
+    let mobileResetCount = 0;
+    const failures = [];
+    const workerCount = Math.min(2, targets.length);
+
+    async function worker() {
+      while (true) {
+        const index = cursor++;
+        if (index >= targets.length) return;
+        const target = targets[index];
+        const number = index + 1;
+        setBusy(true, `Mode kompatibilitas RESET ALL • ${number}/${targets.length} • ${target.label}`);
+
+        let pcOk = false;
+        let mobileOk = false;
+
+        try {
+          await callApi("reset_pc", { licenseId: target.licenseId }, { timeoutMs: 22000 });
+          pcOk = true;
+          pcResetCount++;
+        } catch (err) {
+          failures.push({
+            licenseId: target.licenseId,
+            label: target.label,
+            device: "PC",
+            error: err?.message || String(err)
+          });
+        }
+
+        try {
+          await callApi("reset_mobile", { licenseId: target.licenseId }, { timeoutMs: 22000 });
+          mobileOk = true;
+          mobileResetCount++;
+        } catch (err) {
+          failures.push({
+            licenseId: target.licenseId,
+            label: target.label,
+            device: "Mobile",
+            error: err?.message || String(err)
+          });
+        }
+
+        if (pcOk && mobileOk) processed++;
+      }
+    }
+
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+    return {
+      compatibilityFallback: true,
+      attempted: targets.length,
+      resetCount: processed,
+      pcResetCount,
+      mobileResetCount,
+      failures
+    };
+  }
+
   async function executeResetAll() {
     const ok = await confirmResetAll();
     if (!ok) return;
     setBusy(true, "Mereset PC + Mobile untuk semua user...");
     try {
-      const result = await callApi("reset_all", {}, { timeoutMs: 30000 });
+      let result;
+      let usedCompatibilityFallback = false;
+
+      try {
+        // Fast path for REV308+ backend.
+        result = await callApi("reset_all", {}, { timeoutMs: 30000 });
+      } catch (err) {
+        if (!/UNKNOWN_ADMIN_COMMAND/i.test(err?.message || "")) throw err;
+        usedCompatibilityFallback = true;
+        setBusy(true, "Backend lama terdeteksi. Menjalankan RESET ALL via Reset PC + Reset Mobile...");
+        result = await resetAllViaLegacyCommandsV309();
+      }
+
       await loadUsers(true);
+
       const count = Number(result?.resetCount ?? result?.result?.resetCount ?? 0);
-      showToast(`Reset ALL berhasil. PC + Mobile ${count} user sudah direset dan dibuat OFFLINE.`);
+      const pcCount = Number(result?.pcResetCount ?? result?.result?.pcResetCount ?? count);
+      const mobileCount = Number(result?.mobileResetCount ?? result?.result?.mobileResetCount ?? count);
+      const failures = Array.isArray(result?.failures) ? result.failures : [];
+
+      if (failures.length) {
+        const first = failures[0];
+        showToast(
+          `RESET ALL selesai sebagian. PC: ${pcCount}, Mobile: ${mobileCount}. Gagal: ${failures.length} aksi. Pertama: ${first.label} (${first.device}) — ${first.error}`,
+          true
+        );
+        return;
+      }
+
+      showToast(
+        usedCompatibilityFallback
+          ? `Reset ALL berhasil via mode kompatibilitas. PC ${pcCount} + Mobile ${mobileCount} slot sudah direset dan dibuat OFFLINE.`
+          : `Reset ALL berhasil. PC + Mobile ${count} user sudah direset dan dibuat OFFLINE.`
+      );
     } catch (err) {
       showToast(err.message || String(err), true);
     } finally {

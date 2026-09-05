@@ -1,5 +1,7 @@
 /**
- * TF ANALYZER ANALYST — LICENSE BACKEND REV308 RESET ALL
+ * TF ANALYZER ANALYST — LICENSE BACKEND REV309 RESET ALL COMPAT
+ * REV309 ADDITION:
+ * - Frontend supports automatic legacy fallback when active /exec is still pre-REV308.
  * REV308 ADDITION:
  * - Admin Dashboard command reset_all resets PC + Mobile slots for every license row.
  * - TOKEN, EMAIL, PLAN, LICENSE_ID, and expiry data are preserved.
@@ -656,7 +658,7 @@ function handleAdminDashboardRequestV298_(body) {
     const result = adminDashboardSingleActionV298_(command, body);
     return { success: true, ok: true, result: result };
   }
-  if (command === 'reset_all') {
+  if (command === 'reset_all' || command === 'reset_all_devices' || command === 'reset_all_pc_mobile') {
     return Object.assign({ ok: true }, adminDashboardResetAllDevicesV308_());
   }
   if (command === 'send_email_all') {

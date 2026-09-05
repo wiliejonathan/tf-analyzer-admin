@@ -12,10 +12,12 @@ PERUBAHAN
 
 PENTING — BACKEND
 Fitur Edit Email dan Delete User membutuhkan backend REV307 yang disertakan:
-TF_Analyzer_Apps_Script_REV308_RESET_ALL.gs
+TF_Analyzer_Apps_Script_REV309_RESET_ALL_COMPAT.gs
 
 Deploy file .gs tersebut ke project Google Apps Script yang sama, lalu buat deployment Web App versi baru.
 Setelah deployment, pastikan config.js memakai URL /exec yang aktif.
 
 
 REV308 tambahan: tombol RESET ALL untuk reset PC + Mobile semua user secara massal.
+
+REV309 tambahan: RESET ALL otomatis fallback ke reset_pc + reset_mobile bila backend aktif masih membalas UNKNOWN_ADMIN_COMMAND.
