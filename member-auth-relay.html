@@ -38,6 +38,7 @@
     const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
     const busy=on=>{loading.hidden=!on;host.hidden=!!on};
     const notify=payload=>{try{if(window.opener&&!window.opener.closed)window.opener.postMessage({source:"skill-fusion-auth-relay",...payload},callerOrigin==="null"?"*":callerOrigin)}catch(_){}};
+    const closeSoon=(ms=420)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
 
     async function api(command,data={}){
       const c=new AbortController();const t=setTimeout(()=>c.abort(),35000);
@@ -54,22 +55,28 @@
         if(mode==="register"){
           const reg=await api("register",{credential:response.credential});
           const status=String(reg.status||"").toUpperCase();
-          if(status==="PENDING"){show("Registrasi berhasil. Account menunggu persetujuan owner.","warn");notify({ok:true,mode,status:"PENDING",message:"Registrasi berhasil. Account menunggu persetujuan owner."});return}
-          if(status==="SUSPENDED"){show("Account sedang di-Suspend.","error");notify({ok:false,mode,status:"SUSPENDED",message:"Account sedang di-Suspend."});return}
+          if(status==="PENDING"){
+            const text="Google Account berhasil diverifikasi. Akun sedang menunggu verifikasi admin Skill Fusion.";
+            show(text,"warn");notify({ok:true,mode,status:"PENDING",message:text});closeSoon();return;
+          }
+          if(status==="SUSPENDED"){
+            const text="Account sedang di-Suspend.";
+            show(text,"error");notify({ok:false,mode,status:"SUSPENDED",message:text});closeSoon();return;
+          }
           const login=await api("google_login",{credential:response.credential});
           notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-          show("Account aktif. Membuka Member Area...");setTimeout(()=>{try{window.close()}catch(_){}},250);return;
+          show("Account aktif. Membuka Member Area...");closeSoon(250);return;
         }
         const login=await api("google_login",{credential:response.credential});
         notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-        show("Login berhasil. Membuka Member Area...");setTimeout(()=>{try{window.close()}catch(_){}},250);
+        show("Login berhasil. Membuka Member Area...");closeSoon(250);
       }catch(e){
         const code=String(e.code||"").toUpperCase();
         let text=e.message||"Proses autentikasi gagal.";let type="error";
-        if(code==="PENDING_APPROVAL"){text="Account masih menunggu persetujuan owner.";type="warn"}
+        if(code==="PENDING_APPROVAL"){text="Google Account berhasil diverifikasi. Akun masih menunggu verifikasi admin Skill Fusion.";type="warn"}
         else if(code==="NOT_REGISTERED"){text="Email belum terdaftar. Silakan Register terlebih dahulu.";type="warn"}
         else if(code==="ACCOUNT_SUSPENDED"){text="Account sedang di-Suspend."}
-        show(text,type);notify({ok:false,mode,status:code,message:text});
+        show(text,type);notify({ok:false,mode,status:code,message:text});if(code==="PENDING_APPROVAL")closeSoon();
       }finally{busy(false)}
     }
 
