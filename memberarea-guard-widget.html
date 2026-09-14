@@ -1,0 +1,143 @@
+<!--
+  SKILL FUSION MEMBER AREA GUARD — REV312
+  Paste this block on the protected Memberarea page.
+  IMPORTANT: this protects normal browser access, but the Framer page itself is still a public origin.
+  For non-bypassable protection, use Cloudflare/custom-domain edge protection (see setup guide).
+-->
+<div id="sfMemberGuard" style="position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#0c0f0e;color:#eef5f1;font:600 13px Inter,system-ui,sans-serif;">
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border:1px solid #29322e;border-radius:12px;background:#151917;box-shadow:0 18px 55px rgba(0,0,0,.35)">
+    <span style="width:17px;height:17px;border:2px solid #35413b;border-top-color:#16c878;border-radius:50%;animation:sfGuardSpin .75s linear infinite"></span>
+    <span>Memverifikasi akses member...</span>
+  </div>
+</div>
+<style>@keyframes sfGuardSpin{to{transform:rotate(360deg)}}html.sf-member-locked body>*:not(#sfMemberGuard){visibility:hidden!important}</style>
+<script>
+(() => {
+  "use strict";
+  document.documentElement.classList.add("sf-member-locked");
+
+  window.SF_MEMBER_GUARD_CONFIG = window.SF_MEMBER_GUARD_CONFIG || {
+    apiUrl: "PASTE_MEMBER_APPS_SCRIPT_EXEC_URL_HERE",
+    loginUrl: "PASTE_LOGIN_PAGE_URL_HERE",
+    idleMs: 10 * 60 * 1000,
+    heartbeatMs: 30 * 1000
+  };
+
+  const cfg = window.SF_MEMBER_GUARD_CONFIG;
+  const token = String(sessionStorage.getItem("sf_member_session") || "").trim();
+  let lastUserActivity = Date.now();
+  let heartbeatTimer = null;
+  let idleTimer = null;
+  let loggingOut = false;
+
+  function configured() {
+    return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/i.test(String(cfg.apiUrl || "")) && !/PASTE_/i.test(String(cfg.apiUrl || ""));
+  }
+
+  async function api(command) {
+    const response = await fetch(cfg.apiUrl, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      cache:"no-store",
+      redirect:"follow",
+      body:JSON.stringify({
+        action:"member_auth",
+        command,
+        sessionToken:token,
+        userAgent:navigator.userAgent || ""
+      })
+    });
+    const raw = await response.text();
+    let payload;
+    try { payload = JSON.parse(raw); } catch (_) { throw new Error("INVALID_RESPONSE"); }
+    if (!response.ok || payload.success === false || payload.ok === false || payload.valid === false) {
+      const err = new Error(payload.message || payload.code || payload.error || "SESSION_INVALID");
+      err.payload = payload;
+      throw err;
+    }
+    return payload;
+  }
+
+  function clearSession() {
+    ["sf_member_session","sf_member_expires_at","sf_member_email"].forEach(k => sessionStorage.removeItem(k));
+  }
+
+  function redirectToLogin(reason) {
+    if (loggingOut) return;
+    loggingOut = true;
+    clearTimeout(heartbeatTimer);
+    clearTimeout(idleTimer);
+    clearSession();
+    const target = String(cfg.loginUrl || "/").trim() || "/";
+    const join = target.includes("?") ? "&" : "?";
+    location.replace(target + join + "member_reason=" + encodeURIComponent(reason || "session"));
+  }
+
+  async function logout(reason) {
+    if (loggingOut) return;
+    try { await api("logout"); } catch (_) {}
+    redirectToLogin(reason || "logout");
+  }
+
+  function noteActivity() {
+    lastUserActivity = Date.now();
+  }
+
+  function scheduleIdleCheck() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(async () => {
+      if (Date.now() - lastUserActivity >= Number(cfg.idleMs || 600000)) {
+        await logout("idle_timeout");
+        return;
+      }
+      scheduleIdleCheck();
+    }, 15000);
+  }
+
+  function scheduleHeartbeat() {
+    clearTimeout(heartbeatTimer);
+    heartbeatTimer = setTimeout(async () => {
+      if (document.hidden) {
+        scheduleHeartbeat();
+        return;
+      }
+      if (Date.now() - lastUserActivity >= Number(cfg.idleMs || 600000)) {
+        await logout("idle_timeout");
+        return;
+      }
+      try {
+        const result = await api("heartbeat");
+        if (result.expiresAt) sessionStorage.setItem("sf_member_expires_at", result.expiresAt);
+      } catch (_) {
+        redirectToLogin("session_expired");
+        return;
+      }
+      scheduleHeartbeat();
+    }, Math.max(15000, Number(cfg.heartbeatMs || 30000)));
+  }
+
+  ["pointerdown","keydown","touchstart","scroll","mousemove"].forEach(evt => {
+    window.addEventListener(evt, noteActivity, { passive:true });
+  });
+
+  window.addEventListener("pagehide", () => {
+    clearTimeout(heartbeatTimer);
+    clearTimeout(idleTimer);
+  });
+
+  (async () => {
+    if (!configured() || !token) return redirectToLogin(!token ? "login_required" : "guard_not_configured");
+    try {
+      const result = await api("validate_session");
+      if (result.expiresAt) sessionStorage.setItem("sf_member_expires_at", result.expiresAt);
+      document.documentElement.classList.remove("sf-member-locked");
+      const guard = document.getElementById("sfMemberGuard");
+      if (guard) guard.remove();
+      scheduleIdleCheck();
+      scheduleHeartbeat();
+    } catch (_) {
+      redirectToLogin("session_expired");
+    }
+  })();
+})();
+</script>
