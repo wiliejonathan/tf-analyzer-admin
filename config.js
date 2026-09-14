@@ -46,10 +46,10 @@ window.TF_ADMIN_CONFIG = {
   };
 })();
 
-// REV312 — Member Skill Fusion is loaded as a separate module so the existing
+// Member Skill Fusion is loaded as a separate module so the existing
 // TF Analyzer license dashboard remains backward-compatible.
 (() => {
-  const version = "314";
+  const version = "316";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {
