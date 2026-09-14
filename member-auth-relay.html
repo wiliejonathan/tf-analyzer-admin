@@ -28,6 +28,7 @@
     const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
     const CLIENT_ID="115969098046-alnc03479m380nhjk9n0fqtqhboa0081.apps.googleusercontent.com";
     const MEMBER_URL="https://skillfusion.framer.website/Memberarea";
+    const FRAMER_ORIGIN="https://skillfusion.framer.website";
     const qs=new URLSearchParams(location.search);
     const mode=qs.get("mode")==="register"?"register":"login";
     const callerOrigin=qs.get("origin")||"*";
@@ -41,7 +42,19 @@
 
     const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
     const busy=on=>{loading.hidden=!on;host.hidden=!!on};
-    const notify=payload=>{try{if(window.opener&&!window.opener.closed)window.opener.postMessage({source:"skill-fusion-auth-relay",...payload},callerOrigin==="null"?"*":callerOrigin)}catch(_){}};
+
+    // REV332: send auth result to both the widget iframe and the TOP Framer page.
+    // The top page stores the session locally and navigates to Memberarea WITHOUT #sf_token.
+    const notify=payload=>{
+      const packet={source:"skill-fusion-auth-relay",...payload};
+      try{
+        if(window.opener&&!window.opener.closed){
+          try{window.opener.top.postMessage(packet,FRAMER_ORIGIN)}catch(_){}
+          try{window.opener.postMessage(packet,callerOrigin==="null"?"*":callerOrigin)}catch(_){}
+        }
+      }catch(_){}
+    };
+
     const closeSoon=(ms=420)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
 
     async function api(command,data={}){
@@ -95,7 +108,6 @@
           const reg=await api("register",{credential:response.credential});
           const status=String(reg.status||"").toUpperCase();
 
-          // Existing ACTIVE member: do not silently log them in from Sign Up.
           if(isExistingActiveRegistration(reg)){
             const text="Email Google ini sudah terdaftar sebagai Member Skill Fusion. Silakan gunakan menu Login, bukan Sign Up / Register.";
             show(text,"warn");
@@ -104,7 +116,6 @@
             return;
           }
 
-          // Existing PENDING member: make it clear that re-registering is unnecessary.
           if(isExistingPendingRegistration(reg)){
             const text="Email Google ini sudah terdaftar dan masih menunggu verifikasi admin. Anda tidak perlu mendaftar ulang.";
             show(text,"warn");
@@ -129,8 +140,6 @@
             return;
           }
 
-          // Brand-new TF Analyzer license client may be auto-activated by register().
-          // This is not treated as a duplicate registration.
           const login=await api("google_login",{credential:response.credential});
           notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
           show("Account aktif. Membuka Member Area...");
