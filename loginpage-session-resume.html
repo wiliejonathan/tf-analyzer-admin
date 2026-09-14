@@ -1,30 +1,128 @@
-<!-- SKILL FUSION LOGINPAGE SESSION RESUME — REV331 -->
+<!-- SKILL FUSION LOGINPAGE SESSION RESUME — REV332 -->
 <style id="sfLoginResumeStyle">html.sf-login-session-check body{visibility:hidden!important}</style>
 <script>
 (()=>{
   "use strict";
+
   const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
   const MEMBER_URL="https://skillfusion.framer.website/Memberarea";
+  const RELAY_ORIGIN="https://wiliejonathan.github.io";
   const SESSION_KEY="sf_member_session";
   const EXPIRES_KEY="sf_member_expires_at";
   const EMAIL_KEY="sf_member_email";
   const ACTIVITY_KEY="sf_member_last_activity";
   const IDLE_MS=10*60*1000;
+
   document.documentElement.classList.add("sf-login-session-check");
 
-  function stores(){const out=[];for(const s of [localStorage,sessionStorage]){try{if(s&&!out.includes(s))out.push(s)}catch(_){}}return out}
-  function read(key){for(const s of stores()){try{const v=String(s.getItem(key)||"").trim();if(v)return v}catch(_){}}return ""}
-  function clear(){stores().forEach(s=>{try{[SESSION_KEY,EXPIRES_KEY,EMAIL_KEY,ACTIVITY_KEY].forEach(k=>s.removeItem(k))}catch(_){}})}
-  function reveal(){document.documentElement.classList.remove("sf-login-session-check");document.getElementById("sfLoginResumeStyle")?.remove()}
+  function stores(){
+    const out=[];
+    for(const s of [localStorage,sessionStorage]){
+      try{if(s&&!out.includes(s))out.push(s)}catch(_){}
+    }
+    return out;
+  }
 
-  async function validate(token){const c=new AbortController();const t=setTimeout(()=>c.abort(),8000);try{const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command:"validate_session",sessionToken:token,userAgent:navigator.userAgent||""})});const raw=await r.text();const p=JSON.parse(raw||"{}");if(!r.ok||p.success===false||p.ok===false||p.valid===false)throw new Error(p.code||"SESSION_INVALID");return p}finally{clearTimeout(t)}}
+  function read(key){
+    for(const s of stores()){
+      try{
+        const v=String(s.getItem(key)||"").trim();
+        if(v)return v;
+      }catch(_){}
+    }
+    return "";
+  }
+
+  function write(key,value){
+    stores().forEach(s=>{
+      try{s.setItem(key,String(value))}catch(_){}
+    });
+  }
+
+  function clear(){
+    stores().forEach(s=>{
+      try{[SESSION_KEY,EXPIRES_KEY,EMAIL_KEY,ACTIVITY_KEY].forEach(k=>s.removeItem(k))}catch(_){}
+    });
+  }
+
+  function reveal(){
+    document.documentElement.classList.remove("sf-login-session-check");
+    document.getElementById("sfLoginResumeStyle")?.remove();
+  }
+
+  async function validate(token){
+    const c=new AbortController();
+    const t=setTimeout(()=>c.abort(),8000);
+    try{
+      const r=await fetch(API_URL,{
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        cache:"no-store",
+        redirect:"follow",
+        signal:c.signal,
+        body:JSON.stringify({
+          action:"member_auth",
+          command:"validate_session",
+          sessionToken:token,
+          userAgent:navigator.userAgent||""
+        })
+      });
+      const raw=await r.text();
+      const p=JSON.parse(raw||"{}");
+      if(!r.ok||p.success===false||p.ok===false||p.valid===false)throw new Error(p.code||"SESSION_INVALID");
+      return p;
+    }finally{
+      clearTimeout(t);
+    }
+  }
+
+  // Receive the authenticated session directly from the Google relay.
+  // The session is stored on the Framer origin and NEVER placed in the URL.
+  window.addEventListener("message",event=>{
+    if(event.origin!==RELAY_ORIGIN)return;
+    const data=event.data||{};
+    if(data.source!=="skill-fusion-auth-relay")return;
+    if(!data.ok||String(data.status||"").toUpperCase()!=="ACTIVE")return;
+
+    const token=String(data.sessionToken||"").trim();
+    if(!token)return;
+
+    write(SESSION_KEY,token);
+    if(data.expiresAt)write(EXPIRES_KEY,data.expiresAt);
+    if(data.member&&data.member.email)write(EMAIL_KEY,data.member.email);
+    write(ACTIVITY_KEY,Date.now());
+
+    // Clean navigation: no #sf_token and no transferable bearer token in address bar.
+    location.replace(MEMBER_URL);
+  });
 
   (async()=>{
+    // Remove any legacy token fragment immediately. It is no longer trusted as a login handoff.
+    if(/(?:^#|&)sf_token=/i.test(String(location.hash||""))){
+      try{history.replaceState(null,document.title,location.pathname+location.search)}catch(_){}
+    }
+
     const token=read(SESSION_KEY);
     if(!token){reveal();return}
+
     const last=Number(read(ACTIVITY_KEY)||0);
-    if(last&&Date.now()-last>=IDLE_MS){clear();reveal();return}
-    try{const result=await validate(token);if(!result.valid)throw new Error("SESSION_INVALID");location.replace(MEMBER_URL+"#sf_token="+encodeURIComponent(token))}catch(_){clear();reveal()}
+    if(last&&Date.now()-last>=IDLE_MS){
+      clear();
+      reveal();
+      return;
+    }
+
+    try{
+      const result=await validate(token);
+      if(!result.valid)throw new Error("SESSION_INVALID");
+      if(result.expiresAt)write(EXPIRES_KEY,result.expiresAt);
+      if(result.member&&result.member.email)write(EMAIL_KEY,result.member.email);
+      // Existing valid session resumes without putting the token in the URL.
+      location.replace(MEMBER_URL);
+    }catch(_){
+      clear();
+      reveal();
+    }
   })();
 })();
 </script>
