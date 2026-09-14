@@ -1,4 +1,4 @@
-<!-- SKILL FUSION LOGINPAGE SESSION BRIDGE — REV333 -->
+<!-- SKILL FUSION LOGINPAGE SESSION BRIDGE — REV335 -->
 <style id="sfLoginResumeStyle">html.sf-login-session-check body{visibility:hidden!important}</style>
 <script>
 (()=>{
@@ -13,97 +13,72 @@
   const ACTIVITY_KEY="sf_member_last_activity";
   const IDLE_MS=10*60*1000;
 
-  document.documentElement.classList.add("sf-login-session-check");
-
-  function stores(){
-    const out=[];
-    for(const s of [localStorage,sessionStorage]){
-      try{if(s&&!out.includes(s))out.push(s)}catch(_){}
-    }
-    return out;
-  }
-
-  function read(key){
-    for(const s of stores()){
-      try{
-        const v=String(s.getItem(key)||"").trim();
-        if(v)return v;
-      }catch(_){}
-    }
-    return "";
-  }
-
-  function writeSession(data){
-    const token=String(data?.sessionToken||"").trim();
-    if(!token)return false;
-    const expires=String(data?.expiresAt||"").trim();
-    const email=String(data?.member?.email||"").trim();
-    const now=String(Date.now());
-    stores().forEach(s=>{
-      try{
-        s.setItem(SESSION_KEY,token);
-        if(expires)s.setItem(EXPIRES_KEY,expires);
-        if(email)s.setItem(EMAIL_KEY,email);
-        s.setItem(ACTIVITY_KEY,now);
-      }catch(_){}
-    });
-    return true;
-  }
-
-  function clear(){
-    stores().forEach(s=>{
-      try{[SESSION_KEY,EXPIRES_KEY,EMAIL_KEY,ACTIVITY_KEY].forEach(k=>s.removeItem(k))}catch(_){}
-    });
-  }
-
-  function reveal(){
+  // Safety if Framer injects this Custom Code site-wide.
+  const isLoginPage=/\/loginpage\/?$/i.test(location.pathname);
+  if(!isLoginPage){
     document.documentElement.classList.remove("sf-login-session-check");
     document.getElementById("sfLoginResumeStyle")?.remove();
+    return;
   }
+
+  document.documentElement.classList.add("sf-login-session-check");
+  let acceptingToken="";
+  let navigating=false;
+
+  function stores(){const out=[];for(const s of [localStorage,sessionStorage]){try{if(s&&!out.includes(s))out.push(s)}catch(_){}}return out}
+  function read(key){for(const s of stores()){try{const v=String(s.getItem(key)||"").trim();if(v)return v}catch(_){}}return ""}
+  function writeSession(data){
+    const token=String(data&&data.sessionToken||"").trim();
+    if(!token)return false;
+    const expires=String(data&&data.expiresAt||"").trim();
+    const email=String(data&&data.member&&data.member.email||"").trim();
+    const now=String(Date.now());
+    let wrote=false;
+    stores().forEach(s=>{try{s.setItem(SESSION_KEY,token);if(expires)s.setItem(EXPIRES_KEY,expires);if(email)s.setItem(EMAIL_KEY,email);s.setItem(ACTIVITY_KEY,now);wrote=true}catch(_){}});
+    return wrote;
+  }
+  function clear(){stores().forEach(s=>{try{[SESSION_KEY,EXPIRES_KEY,EMAIL_KEY,ACTIVITY_KEY].forEach(k=>s.removeItem(k))}catch(_){}})}
+  function reveal(){document.documentElement.classList.remove("sf-login-session-check");document.getElementById("sfLoginResumeStyle")?.remove()}
 
   async function validate(token){
     const c=new AbortController();
-    const t=setTimeout(()=>c.abort(),10000);
+    const t=setTimeout(()=>c.abort(),12000);
     try{
-      const r=await fetch(API_URL,{
-        method:"POST",
-        headers:{"Content-Type":"text/plain;charset=utf-8"},
-        cache:"no-store",
-        redirect:"follow",
-        signal:c.signal,
-        body:JSON.stringify({
-          action:"member_auth",
-          command:"validate_session",
-          sessionToken:token,
-          userAgent:navigator.userAgent||""
-        })
-      });
+      const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command:"validate_session",sessionToken:token,userAgent:navigator.userAgent||""})});
       const raw=await r.text();
-      const p=JSON.parse(raw||"{}");
-      if(!r.ok||p.success===false||p.ok===false||p.valid===false)throw new Error(p.code||"SESSION_INVALID");
+      let p;try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_RESPONSE")}
+      if(!r.ok||p.success===false||p.ok===false||p.valid===false)throw new Error(p.code||p.message||"SESSION_INVALID");
       return p;
-    }finally{
-      clearTimeout(t);
-    }
+    }finally{clearTimeout(t)}
   }
 
-  async function acceptSession(data){
-    const token=String(data?.sessionToken||"").trim();
-    if(!token)return false;
+  function ack(target,origin,ok,message){
+    try{if(target&&typeof target.postMessage==="function")target.postMessage({source:"skill-fusion-session-ack",ok:!!ok,message:message||""},origin&&origin!=="null"?origin:"*")}catch(_){}
+  }
+
+  async function acceptSession(data,replyWindow,replyOrigin){
+    const token=String(data&&data.sessionToken||"").trim();
+    if(!token||navigating)return false;
+    if(acceptingToken===token)return false;
+    acceptingToken=token;
     try{
-      // Never trust an iframe message blindly. Validate the session with backend first.
       const checked=await validate(token);
-      if(!checked?.valid)return false;
-      writeSession({
-        sessionToken:token,
-        expiresAt:checked.expiresAt||data.expiresAt||"",
-        member:checked.member||data.member||{}
-      });
-      // SECURITY: token is not placed in address bar.
+      if(!checked||!checked.valid)throw new Error("SESSION_INVALID");
+      const saved=writeSession({sessionToken:token,expiresAt:checked.expiresAt||data.expiresAt||"",member:checked.member||data.member||{}});
+      if(!saved)throw new Error("SESSION_STORAGE_FAILED");
+
+      // Read-back check prevents Memberarea from opening before storage is actually ready.
+      if(read(SESSION_KEY)!==token)throw new Error("SESSION_STORAGE_VERIFY_FAILED");
+
+      ack(replyWindow,replyOrigin,true,"Session tersimpan.");
+      navigating=true;
+      // Only the TOP Loginpage performs the navigation, after validation + storage.
       location.replace(MEMBER_URL);
       return true;
-    }catch(_){
+    }catch(e){
+      acceptingToken="";
       clear();
+      ack(replyWindow,replyOrigin,false,e&&e.message?e.message:"Session gagal disimpan.");
       reveal();
       return false;
     }
@@ -112,44 +87,35 @@
   window.addEventListener("message",event=>{
     const data=event.data||{};
 
-    // Direct message from our GitHub Google-auth relay.
-    if(event.origin===RELAY_ORIGIN && data.source==="skill-fusion-auth-relay"){
-      if(data.ok && String(data.status||"").toUpperCase()==="ACTIVE")acceptSession(data);
+    if(event.origin===RELAY_ORIGIN&&data.source==="skill-fusion-auth-relay"){
+      if(data.ok&&String(data.status||"").toUpperCase()==="ACTIVE")acceptSession(data,event.source,event.origin);
       return;
     }
 
-    // Handoff from the Framer HTML widget iframe. Origin can be Framer's embed origin,
-    // therefore backend validation above is mandatory before accepting the token.
-    if(data.source==="skill-fusion-widget-session" && String(data.status||"ACTIVE").toUpperCase()==="ACTIVE"){
-      acceptSession(data);
+    // Fallback handoff from Framer's HTML Embed iframe. Token still must validate server-side.
+    if(data.source==="skill-fusion-widget-session"&&String(data.status||"ACTIVE").toUpperCase()==="ACTIVE"){
+      acceptSession(data,event.source,event.origin);
     }
   });
 
   (async()=>{
-    // Legacy #sf_token URLs are never accepted. Strip them immediately.
-    if(/(?:^#|&)sf_token=/i.test(String(location.hash||""))){
-      try{history.replaceState(null,document.title,location.pathname+location.search)}catch(_){}
-    }
+    // Legacy token URLs are stripped and never accepted as login credentials.
+    if(/(?:^#|&)sf_token=/i.test(String(location.hash||""))){try{history.replaceState(null,document.title,location.pathname+location.search)}catch(_){}}
 
     const token=read(SESSION_KEY);
     if(!token){reveal();return}
 
     const last=Number(read(ACTIVITY_KEY)||0);
-    if(last&&Date.now()-last>=IDLE_MS){
-      clear();
-      reveal();
-      return;
-    }
+    if(last&&Date.now()-last>=IDLE_MS){clear();reveal();return}
 
     try{
       const result=await validate(token);
       if(!result.valid)throw new Error("SESSION_INVALID");
-      writeSession({sessionToken:token,expiresAt:result.expiresAt,member:result.member});
+      if(!writeSession({sessionToken:token,expiresAt:result.expiresAt,member:result.member}))throw new Error("SESSION_STORAGE_FAILED");
+      if(read(SESSION_KEY)!==token)throw new Error("SESSION_STORAGE_VERIFY_FAILED");
+      navigating=true;
       location.replace(MEMBER_URL);
-    }catch(_){
-      clear();
-      reveal();
-    }
+    }catch(_){clear();reveal()}
   })();
 })();
 </script>
