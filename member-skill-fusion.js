@@ -54,7 +54,7 @@
     if (!key) throw new Error("ADMIN_KEY_REQUIRED");
 
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 16000);
+    const timeout = setTimeout(() => ctrl.abort(), 35000);
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -73,7 +73,7 @@
       }
       return payload;
     } catch (err) {
-      if (err && err.name === "AbortError") throw new Error("MEMBER_API_TIMEOUT");
+      if (err && err.name === "AbortError") throw new Error("MEMBER_API_TIMEOUT_35S");
       throw err;
     } finally {
       clearTimeout(timeout);
@@ -90,6 +90,52 @@
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
     return d.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" });
+  }
+
+  // Only render profile images from Google-hosted sources. PHOTO_URL is populated
+  // by the backend only after a verified Google Identity credential is accepted.
+  function verifiedGooglePhoto(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const u = new URL(raw);
+      const host = u.hostname.toLowerCase();
+      const googleHosted = u.protocol === "https:" && (
+        host === "googleusercontent.com" ||
+        host.endsWith(".googleusercontent.com")
+      );
+      return googleHosted ? u.href : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function avatarHtml(member, size = "normal") {
+    const photo = verifiedGooglePhoto(member && member.photoUrl);
+    const title = photo
+      ? "Foto profil Google Account"
+      : "Foto Google belum tersedia — user belum login menggunakan Google Account";
+    if (photo) {
+      return `<span class="sf-google-avatar ${size === "small" ? "small" : ""}" title="${esc(title)}"><img src="${esc(photo)}" alt="Foto profil Google ${esc(member?.name || member?.email || "member")}" referrerpolicy="no-referrer"></span>`;
+    }
+    return `<span class="sf-google-avatar sf-google-avatar-empty ${size === "small" ? "small" : ""}" title="${esc(title)}" aria-label="${esc(title)}">?</span>`;
+  }
+
+  function injectAvatarStyles() {
+    if (document.getElementById("sfMemberAvatarStylesREV317")) return;
+    const style = document.createElement("style");
+    style.id = "sfMemberAvatarStylesREV317";
+    style.textContent = `
+      .sf-member-table th:first-child,.sf-member-table td:first-child{width:64px;text-align:center;padding-left:12px;padding-right:12px}
+      .sf-google-avatar{width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;vertical-align:middle;border:1px solid rgba(73,211,142,.28);background:#09251b;box-shadow:0 0 0 3px rgba(37,204,126,.055)}
+      .sf-google-avatar.small{width:34px;height:34px}
+      .sf-google-avatar img{width:100%;height:100%;display:block;object-fit:cover}
+      .sf-google-avatar-empty{color:#6f8c80;font-size:13px;font-weight:800;border-style:dashed;background:rgba(7,31,24,.72)}
+      .sf-member-online-profile{display:flex;align-items:center;gap:10px;min-width:0}
+      .sf-member-online-profile>div{min-width:0}
+      .sf-member-online-profile strong,.sf-member-online-profile small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    `;
+    document.head.appendChild(style);
   }
 
   function injectNav() {
@@ -160,10 +206,10 @@
           <div id="sfMemberOnlineList" class="sf-member-online-list"></div>
         </section>
         <section class="panel sf-member-panel">
-          <div class="sf-member-panel-head"><div><h3>Aktivitas Member Terbaru</h3><p>Last login dan last seen.</p></div></div>
+          <div class="sf-member-panel-head"><div><h3>Aktivitas Member Terbaru</h3><p>Foto dan nama berasal dari Google Account setelah user login Google pertama kali.</p></div></div>
           <div class="sf-member-table-wrap">
             <table class="sf-member-table">
-              <thead><tr><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Last Login</th><th>Last Seen</th></tr></thead>
+              <thead><tr><th>Foto</th><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Last Login</th><th>Last Seen</th></tr></thead>
               <tbody id="sfMemberRecentBody"></tbody>
             </table>
           </div>
@@ -172,12 +218,12 @@
 
       <div id="sfMemberAddView" class="sf-member-view" hidden>
         <div class="sf-member-toolbar">
-          <div class="sf-member-title-wrap"><div class="panel-kicker">MEMBER SKILL FUSION</div><h2>Tambah User</h2><p>Tambah email manual sebagai Pending atau langsung Active.</p></div>
+          <div class="sf-member-title-wrap"><div class="panel-kicker">MEMBER SKILL FUSION</div><h2>Tambah User</h2><p>Tambah email manual sebagai Pending atau langsung Active. Foto profil tidak bisa diisi manual dan hanya diambil saat Google Login.</p></div>
         </div>
         <section class="panel sf-member-panel">
           <form id="sfMemberAddForm" class="sf-member-form">
             <label><span>Email Google</span><input id="sfMemberAddEmail" type="email" required placeholder="member@gmail.com"></label>
-            <label><span>Nama</span><input id="sfMemberAddName" type="text" placeholder="Nama member"></label>
+            <label><span>Nama sementara</span><input id="sfMemberAddName" type="text" placeholder="Opsional — akan diperbarui dari Google saat login"></label>
             <label><span>Status awal</span><select id="sfMemberAddStatus"><option value="ACTIVE">ACTIVE</option><option value="PENDING">PENDING</option></select></label>
             <label><span>Catatan</span><input id="sfMemberAddNotes" type="text" placeholder="Opsional"></label>
             <div class="sf-member-form-full"><button class="button button-primary" type="submit">+ Tambah Member</button></div>
@@ -187,13 +233,13 @@
 
       <div id="sfMemberUsersView" class="sf-member-view" hidden>
         <div class="sf-member-toolbar">
-          <div class="sf-member-title-wrap"><div class="panel-kicker">MEMBER SKILL FUSION</div><h2>Manajemen User</h2><p>Approve, suspend, aktifkan kembali, resend email, atau remove member.</p></div>
+          <div class="sf-member-title-wrap"><div class="panel-kicker">MEMBER SKILL FUSION</div><h2>Manajemen User</h2><p>Foto profil hanya ditampilkan dari Google Account terverifikasi.</p></div>
           <input id="sfMemberSearch" class="sf-member-search" type="search" placeholder="Cari email, nama, status...">
         </div>
         <section class="panel sf-member-panel">
           <div class="sf-member-table-wrap">
             <table class="sf-member-table">
-              <thead><tr><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Terdaftar</th><th>Last Seen</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Foto</th><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Terdaftar</th><th>Last Seen</th><th>Aksi</th></tr></thead>
               <tbody id="sfMemberUsersBody"></tbody>
             </table>
           </div>
@@ -260,7 +306,7 @@
     if (!url) {
       alert.hidden = false;
       alert.classList.remove("error");
-      alert.innerHTML = `Member API belum dikonfigurasi. Deploy <strong>Member_Skill_Fusion_Backend.gs</strong> sebagai Apps Script Web App, lalu isi <strong>memberApiUrl</strong> di config.js.`;
+      alert.innerHTML = `Member API belum dikonfigurasi. Isi <strong>memberApiUrl</strong> di config.js.`;
       return;
     }
     if (message) {
@@ -294,14 +340,10 @@
 
   function renderAll() {
     const members = state.members.slice();
-    const total = members.length;
-    const online = members.filter(m => m.online).length;
-    const pending = members.filter(m => String(m.status).toUpperCase() === "PENDING").length;
-    const suspended = members.filter(m => String(m.status).toUpperCase() === "SUSPENDED").length;
-    document.getElementById("sfMemberTotal").textContent = total;
-    document.getElementById("sfMemberOnline").textContent = online;
-    document.getElementById("sfMemberPending").textContent = pending;
-    document.getElementById("sfMemberSuspended").textContent = suspended;
+    document.getElementById("sfMemberTotal").textContent = members.length;
+    document.getElementById("sfMemberOnline").textContent = members.filter(m => m.online).length;
+    document.getElementById("sfMemberPending").textContent = members.filter(m => String(m.status).toUpperCase() === "PENDING").length;
+    document.getElementById("sfMemberSuspended").textContent = members.filter(m => String(m.status).toUpperCase() === "SUSPENDED").length;
     renderOnline();
     renderRecent();
     renderManagement();
@@ -318,7 +360,10 @@
     box.innerHTML = online.map(m => `
       <div class="sf-member-online-row">
         <span class="sf-member-online-dot"></span>
-        <div><strong>${esc(m.email)}</strong><small>${esc(m.name || "-")}</small></div>
+        <div class="sf-member-online-profile">
+          ${avatarHtml(m, "small")}
+          <div><strong>${esc(m.email)}</strong><small>${esc(m.name || "-")}</small></div>
+        </div>
         <time>${esc(fmt(m.lastSeenAt))}</time>
       </div>`).join("");
   }
@@ -326,13 +371,19 @@
   function renderRecent() {
     const body = document.getElementById("sfMemberRecentBody");
     if (!body) return;
-    const rows = state.members.slice().sort((a,b) => new Date(b.lastSeenAt || b.createdAt || 0) - new Date(a.lastSeenAt || a.createdAt || 0)).slice(0, 10);
+    const rows = state.members.slice()
+      .sort((a,b) => new Date(b.lastSeenAt || b.createdAt || 0) - new Date(a.lastSeenAt || a.createdAt || 0))
+      .slice(0, 10);
     body.innerHTML = rows.length ? rows.map(m => `
       <tr>
-        <td>${esc(m.email)}</td><td>${esc(m.name || "-")}</td>
+        <td>${avatarHtml(m)}</td>
+        <td>${esc(m.email)}</td>
+        <td>${esc(m.name || "-")}</td>
         <td><span class="sf-member-status ${statusClass(m.status)}">${esc(m.status)}</span></td>
-        <td>${m.online ? "● Online" : "Offline"}</td><td>${esc(fmt(m.lastLoginAt))}</td><td>${esc(fmt(m.lastSeenAt))}</td>
-      </tr>`).join("") : `<tr><td colspan="6" class="sf-member-empty">Belum ada member.</td></tr>`;
+        <td>${m.online ? "● Online" : "Offline"}</td>
+        <td>${esc(fmt(m.lastLoginAt))}</td>
+        <td>${esc(fmt(m.lastSeenAt))}</td>
+      </tr>`).join("") : `<tr><td colspan="7" class="sf-member-empty">Belum ada member.</td></tr>`;
   }
 
   function actionHtml(m) {
@@ -355,9 +406,13 @@
     const rows = state.members.filter(m => !search || [m.email,m.name,m.status].join(" ").toLowerCase().includes(search));
     body.innerHTML = rows.map(m => `
       <tr>
-        <td>${esc(m.email)}</td><td>${esc(m.name || "-")}</td>
+        <td>${avatarHtml(m)}</td>
+        <td>${esc(m.email)}</td>
+        <td>${esc(m.name || "-")}</td>
         <td><span class="sf-member-status ${statusClass(m.status)}">${esc(m.status)}</span></td>
-        <td>${m.online ? "● Online" : "Offline"}</td><td>${esc(fmt(m.createdAt))}</td><td>${esc(fmt(m.lastSeenAt))}</td>
+        <td>${m.online ? "● Online" : "Offline"}</td>
+        <td>${esc(fmt(m.createdAt))}</td>
+        <td>${esc(fmt(m.lastSeenAt))}</td>
         <td><div class="sf-member-actions">${actionHtml(m)}</div></td>
       </tr>`).join("");
     if (empty) empty.hidden = rows.length > 0;
@@ -428,11 +483,11 @@
   }
 
   function init() {
+    injectAvatarStyles();
     injectNav();
     injectSection();
     updateConfigAlert();
 
-    // Preserve existing dashboard behavior after lock/login transitions.
     const app = document.getElementById("appView");
     if (app && window.MutationObserver) {
       new MutationObserver(() => {
@@ -440,7 +495,6 @@
       }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
     }
 
-    // Expose a tiny diagnostic helper without exposing the admin key.
     window.SF_MEMBER_ADMIN = {
       getApiUrl: () => memberApiUrl() || DEFAULT_ADMIN_API(),
       refresh: () => loadMembers(false),
