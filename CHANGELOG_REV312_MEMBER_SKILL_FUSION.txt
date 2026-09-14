@@ -1,0 +1,27 @@
+TF ANALYZER ANALYST — REV312 MEMBER SKILL FUSION
+
+Added:
+- New sidebar parent menu: Member Skill Fusion.
+- Default subpage Dashboard + Tambah User + Manajemen User.
+- Total User / User Online / Pending / Suspended cards.
+- Member online list using session heartbeat.
+- Approve, suspend, reactivate, status email, and remove actions.
+- Google Account register/login workflow with owner approval.
+- Owner email for pending registrations.
+- Member activation/status email.
+- 10-minute inactivity logout.
+- Google Sheet-backed member/session/audit backend.
+- Session token hashing before storage.
+- Framer login/register HTML widget.
+- Framer Memberarea guard widget.
+
+Security note:
+The client-side Framer guard blocks ordinary direct-link access, but strong anti-bypass protection requires a custom domain / edge gate (recommended Cloudflare phase).
+
+Files:
+- member-skill-fusion.js
+- member-skill-fusion.css
+- Member_Skill_Fusion_Backend.gs
+- member-auth-widget.html
+- memberarea-guard-widget.html
+- README_MEMBER_SKILL_FUSION_REV312.md
