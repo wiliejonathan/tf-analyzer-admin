@@ -47,7 +47,7 @@ window.TF_ADMIN_CONFIG = {
 // Member Skill Fusion is loaded as a separate module so the existing
 // TF Analyzer license dashboard remains backward-compatible.
 (() => {
-  const version = "317";
+  const version = "318";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {
@@ -64,5 +64,13 @@ window.TF_ADMIN_CONFIG = {
     script.defer = true;
     script.dataset.sfMemberModule = "script";
     document.body.appendChild(script);
+  }
+
+  if (!document.querySelector('script[data-sf-summary-carousel]')) {
+    const summaryScript = document.createElement("script");
+    summaryScript.src = `sidebar-member-summary.js?v=${version}`;
+    summaryScript.defer = true;
+    summaryScript.dataset.sfSummaryCarousel = "script";
+    document.body.appendChild(summaryScript);
   }
 })();
