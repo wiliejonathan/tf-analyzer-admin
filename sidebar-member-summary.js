@@ -194,8 +194,6 @@
     document.querySelectorAll('[data-sf-member-view="add-user"]').forEach(el => el.remove());
     document.getElementById("sfMemberAddView")?.remove();
 
-    // Defensive: if an older cached module left the removed view selected,
-    // return Member Skill Fusion to Dashboard.
     const section = document.getElementById("memberSkillFusionSection");
     if (section?.classList.contains("active-section")) {
       const dashboard = document.getElementById("sfMemberDashboardView");
@@ -215,5 +213,132 @@
     document.addEventListener("DOMContentLoaded", startCleanup, { once: true });
   } else {
     startCleanup();
+  }
+})();
+
+// REV320 — Member Skill Fusion > Manajemen User status selector.
+// Visible choices stay ACTIVE / NOT ACTIVE. A user suspended from the action button
+// is displayed as SUSPEND, while reopening the selector still offers only the two
+// requested choices. NOT ACTIVE maps to backend PENDING so login/session is disabled.
+(() => {
+  "use strict";
+
+  const cfg = window.TF_ADMIN_CONFIG || {};
+
+  function apiUrl() {
+    return String(cfg.memberApiUrl || cfg.apiUrl || localStorage.getItem("sf_member_api_url") || "").trim();
+  }
+
+  function adminKey() {
+    const input = document.getElementById("adminKeyInput");
+    return String(input && input.value || localStorage.getItem("tf_admin_key_v303") || "").trim();
+  }
+
+  function injectStatusStyle() {
+    if (document.getElementById("sfMemberStatusSelectREV320")) return;
+    const style = document.createElement("style");
+    style.id = "sfMemberStatusSelectREV320";
+    style.textContent = `
+      .sf-member-status-select{min-width:108px;height:32px;padding:0 28px 0 10px;border-radius:9px;border:1px solid rgba(56,189,123,.32);background:#071f18;color:#dce9e4;font:800 11px/1 system-ui;letter-spacing:.02em;outline:none;cursor:pointer}
+      .sf-member-status-select:focus{border-color:#42d992;box-shadow:0 0 0 3px rgba(66,217,146,.10)}
+      .sf-member-status-select[data-display="SUSPEND"]{border-color:rgba(239,108,118,.42);color:#ff9aa2;background:rgba(70,16,24,.35)}
+      .sf-member-status-select[data-display="NOT ACTIVE"]{border-color:rgba(230,184,78,.38);color:#e8c765;background:rgba(74,55,12,.28)}
+      .sf-member-status-select:disabled{opacity:.55;cursor:wait}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function emailFromRow(row) {
+    const cells = row?.querySelectorAll("td");
+    return String(cells?.[1]?.textContent || "").trim().toLowerCase();
+  }
+
+  function statusSelectHtml(status, email) {
+    const s = String(status || "").trim().toUpperCase();
+    const isSuspended = s === "SUSPENDED";
+    const current = s === "ACTIVE" ? "ACTIVE" : (isSuspended ? "SUSPENDED" : "PENDING");
+    const display = current === "ACTIVE" ? "ACTIVE" : (current === "SUSPENDED" ? "SUSPEND" : "NOT ACTIVE");
+    return `<select class="sf-member-status-select" data-sf-status-email="${encodeURIComponent(email)}" data-current-status="${current}" data-display="${display}" aria-label="Status member ${email}">
+      ${isSuspended ? '<option value="SUSPENDED" selected hidden>SUSPEND</option>' : ''}
+      <option value="ACTIVE" ${current === "ACTIVE" ? "selected" : ""}>ACTIVE</option>
+      <option value="PENDING" ${current === "PENDING" ? "selected" : ""}>NOT ACTIVE</option>
+    </select>`;
+  }
+
+  function applySelectors() {
+    injectStatusStyle();
+    document.querySelectorAll("#sfMemberUsersBody tr").forEach(row => {
+      const cells = row.querySelectorAll("td");
+      if (cells.length < 4 || cells[3].querySelector(".sf-member-status-select")) return;
+      const email = emailFromRow(row);
+      const statusNode = cells[3].querySelector(".sf-member-status");
+      const status = String(statusNode?.textContent || "").trim().toUpperCase();
+      if (!email || !status) return;
+      cells[3].innerHTML = statusSelectHtml(status, email);
+    });
+  }
+
+  async function updateStatus(select) {
+    const email = decodeURIComponent(select.dataset.sfStatusEmail || "");
+    const oldStatus = String(select.dataset.currentStatus || "").toUpperCase();
+    const newStatus = String(select.value || "").toUpperCase();
+    if (!email || !newStatus || newStatus === oldStatus) return;
+
+    const url = apiUrl();
+    const key = adminKey();
+    if (!url || !key) {
+      select.value = oldStatus;
+      return;
+    }
+
+    select.disabled = true;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        cache: "no-store",
+        redirect: "follow",
+        body: JSON.stringify({
+          action: "member_admin",
+          command: "set_status",
+          adminKey: key,
+          email,
+          status: newStatus,
+          sendEmail: false
+        })
+      });
+      const raw = await response.text();
+      let payload;
+      try { payload = JSON.parse(raw || "{}"); } catch (_) { throw new Error("INVALID_MEMBER_RESPONSE"); }
+      if (!response.ok || payload?.success === false || payload?.ok === false) {
+        throw new Error(payload?.message || payload?.error || payload?.code || `HTTP_${response.status}`);
+      }
+      select.dataset.currentStatus = newStatus;
+      select.dataset.display = newStatus === "ACTIVE" ? "ACTIVE" : "NOT ACTIVE";
+      if (window.SF_MEMBER_ADMIN?.refresh) window.SF_MEMBER_ADMIN.refresh();
+    } catch (err) {
+      console.error("[REV320] Member status update failed:", err);
+      select.value = oldStatus;
+      alert(`Gagal mengubah status ${email}: ${err.message || err}`);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  function start() {
+    applySelectors();
+    document.addEventListener("change", event => {
+      const select = event.target.closest?.(".sf-member-status-select");
+      if (select) updateStatus(select);
+    });
+    const observer = new MutationObserver(applySelectors);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener("pagehide", () => observer.disconnect(), { once: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
   }
 })();
