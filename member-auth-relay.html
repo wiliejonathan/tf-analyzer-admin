@@ -16,7 +16,7 @@
     <div class="brand"><div class="logo">SF</div><div><span class="eyebrow">SKILL FUSION</span><h1>Google Authentication</h1></div></div>
     <p class="copy" id="copy">Pilih Google Account untuk melanjutkan.</p>
     <div id="googleBtn" class="google"></div>
-    <div id="loading" class="loading" hidden><span class="spin"></span><span>Memverifikasi Google Account...</span></div>
+    <div id="loading" class="loading" hidden><span class="spin"></span><span id="loadingText">Memverifikasi Google Account...</span></div>
     <div id="msg" class="msg" hidden></div>
   </main>
 
@@ -34,28 +34,81 @@
     const callerOrigin=qs.get("origin")||"*";
     const msg=document.getElementById("msg");
     const loading=document.getElementById("loading");
+    const loadingText=document.getElementById("loadingText");
     const host=document.getElementById("googleBtn");
+
+    let handoffTimer=null;
+    let handoffDeadlineTimer=null;
+    let handoffPacket=null;
+    let handoffDone=false;
 
     document.getElementById("copy").textContent=mode==="register"
       ?"Daftar menggunakan Google Account Anda."
       :"Login menggunakan Google Account yang sudah terdaftar.";
 
     const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
-    const busy=on=>{loading.hidden=!on;host.hidden=!!on};
+    const busy=(on,text="Memverifikasi Google Account...")=>{loading.hidden=!on;loadingText.textContent=text;host.hidden=!!on};
 
-    // REV332: send auth result to both the widget iframe and the TOP Framer page.
-    // The top page stores the session locally and navigates to Memberarea WITHOUT #sf_token.
-    const notify=payload=>{
-      const packet={source:"skill-fusion-auth-relay",...payload};
+    function postPacket(packet){
       try{
-        if(window.opener&&!window.opener.closed){
-          try{window.opener.top.postMessage(packet,FRAMER_ORIGIN)}catch(_){}
-          try{window.opener.postMessage(packet,callerOrigin==="null"?"*":callerOrigin)}catch(_){}
-        }
-      }catch(_){}
-    };
+        if(!window.opener||window.opener.closed)return false;
+        let sent=false;
+        try{window.opener.top.postMessage(packet,FRAMER_ORIGIN);sent=true}catch(_){}
+        try{window.opener.postMessage(packet,callerOrigin==="null"?"*":callerOrigin);sent=true}catch(_){}
+        return sent;
+      }catch(_){return false}
+    }
+
+    function notify(payload){
+      const packet={source:"skill-fusion-auth-relay",...payload};
+      postPacket(packet);
+    }
 
     const closeSoon=(ms=420)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
+
+    function stopHandoff(){
+      clearInterval(handoffTimer);handoffTimer=null;
+      clearTimeout(handoffDeadlineTimer);handoffDeadlineTimer=null;
+    }
+
+    function startActiveHandoff(payload){
+      handoffDone=false;
+      handoffPacket={source:"skill-fusion-auth-relay",...payload};
+      busy(true,"Menyimpan session aman ke Member Area...");
+      show("");
+
+      const send=()=>{
+        if(handoffDone||!handoffPacket)return;
+        postPacket(handoffPacket);
+      };
+
+      send();
+      handoffTimer=setInterval(send,300);
+      handoffDeadlineTimer=setTimeout(()=>{
+        if(handoffDone)return;
+        stopHandoff();
+        busy(false);
+        show("Login Google berhasil, tetapi halaman Login belum mengonfirmasi penyimpanan session. Jangan buka Member Area dari link lama. Tutup popup ini, refresh Loginpage, lalu login sekali lagi.","warn");
+      },12000);
+    }
+
+    window.addEventListener("message",event=>{
+      const data=event.data||{};
+      if(data.source!=="skill-fusion-session-ack")return;
+      if(!handoffPacket||handoffDone)return;
+      if(data.ok){
+        handoffDone=true;
+        stopHandoff();
+        busy(true,"Session tersimpan. Membuka Member Area...");
+        show("Session aman berhasil disimpan.");
+        closeSoon(350);
+      }else{
+        handoffDone=true;
+        stopHandoff();
+        busy(false);
+        show(data.message||"Session gagal disimpan di halaman Login.","error");
+      }
+    });
 
     async function api(command,data={}){
       const c=new AbortController();
@@ -71,7 +124,10 @@
         });
         const raw=await r.text();
         let p;
-        try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_SERVER_RESPONSE")}
+        try{p=JSON.parse(raw||"{}")}catch(_){
+          const preview=String(raw||"").replace(/\s+/g," ").slice(0,180);
+          throw new Error("INVALID_SERVER_RESPONSE"+(preview?": "+preview:""));
+        }
         if(!r.ok||p.success===false||p.ok===false){
           const e=new Error(p.message||p.error||p.code||"AUTH_FAILED");
           e.code=p.code||p.status||"";
@@ -81,21 +137,19 @@
       }catch(e){
         if(e&&e.name==="AbortError")throw new Error("Server sedang lambat. Silakan coba lagi.");
         throw e;
-      }finally{
-        clearTimeout(t);
-      }
+      }finally{clearTimeout(t)}
     }
 
     function isExistingActiveRegistration(reg){
       const status=String(reg?.status||"").toUpperCase();
       const text=String(reg?.message||"").trim();
-      return status==="ACTIVE" && text==="Akun sudah aktif. Silakan Login.";
+      return status==="ACTIVE"&&text==="Akun sudah aktif. Silakan Login.";
     }
 
     function isExistingPendingRegistration(reg){
       const status=String(reg?.status||"").toUpperCase();
       const text=String(reg?.message||"").trim();
-      return status==="PENDING" && text==="Google Account berhasil diverifikasi. Akun menunggu persetujuan admin.";
+      return status==="PENDING"&&text==="Google Account berhasil diverifikasi. Akun menunggu persetujuan admin.";
     }
 
     async function handleGoogle(response){
@@ -112,7 +166,7 @@
             const text="Email Google ini sudah terdaftar sebagai Member Skill Fusion. Silakan gunakan menu Login, bukan Sign Up / Register.";
             show(text,"warn");
             notify({ok:false,mode,status:"EMAIL_ALREADY_REGISTERED",message:text});
-            closeSoon(650);
+            closeSoon(900);
             return;
           }
 
@@ -120,7 +174,7 @@
             const text="Email Google ini sudah terdaftar dan masih menunggu verifikasi admin. Anda tidak perlu mendaftar ulang.";
             show(text,"warn");
             notify({ok:true,mode,status:"PENDING",alreadyRegistered:true,message:text});
-            closeSoon(650);
+            closeSoon(900);
             return;
           }
 
@@ -128,7 +182,7 @@
             const text="Google Account berhasil diverifikasi. Akun sedang menunggu verifikasi admin Skill Fusion.";
             show(text,"warn");
             notify({ok:true,mode,status:"PENDING",alreadyRegistered:false,message:text});
-            closeSoon();
+            closeSoon(900);
             return;
           }
 
@@ -136,21 +190,17 @@
             const text="Email Google ini sudah terdaftar, tetapi account sedang di-Suspend.";
             show(text,"error");
             notify({ok:false,mode,status:"SUSPENDED",message:text});
-            closeSoon(650);
+            closeSoon(900);
             return;
           }
 
           const login=await api("google_login",{credential:response.credential});
-          notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-          show("Account aktif. Membuka Member Area...");
-          closeSoon(250);
+          startActiveHandoff({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
           return;
         }
 
         const login=await api("google_login",{credential:response.credential});
-        notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-        show("Login berhasil. Membuka Member Area...");
-        closeSoon(250);
+        startActiveHandoff({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
 
       }catch(e){
         const code=String(e.code||"").toUpperCase();
@@ -169,9 +219,9 @@
 
         show(text,type);
         notify({ok:false,mode,status:code,message:text});
-        if(code==="PENDING_APPROVAL")closeSoon();
+        if(code==="PENDING_APPROVAL")closeSoon(900);
       }finally{
-        busy(false);
+        if(!handoffPacket||handoffDone)busy(false);
       }
     }
 
