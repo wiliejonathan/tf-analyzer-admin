@@ -1,252 +1,143 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="color-scheme" content="dark">
-  <title>Skill Fusion — Google Authentication</title>
-  <style>
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#061710;color:#f4faf7}body{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 80% 0,rgba(23,205,116,.09),transparent 30%),linear-gradient(145deg,#071b14,#04110d)}
-    .card{width:min(430px,100%);padding:28px;border:1px solid rgba(106,165,142,.18);border-radius:20px;background:linear-gradient(145deg,rgba(8,31,23,.98),rgba(5,23,17,.99));box-shadow:0 25px 70px rgba(0,0,0,.28)}
-    .brand{display:flex;align-items:center;gap:13px}.logo{width:52px;height:52px;display:grid;place-items:center;border-radius:15px;border:1px solid rgba(36,224,135,.22);background:linear-gradient(145deg,#0a5c43,#07402f);color:#18dd7d;font-weight:900}.eyebrow{display:block;color:#18d778;font-size:10px;font-weight:900;letter-spacing:.14em}.brand h1{margin:3px 0 0;font-size:23px;line-height:1.1}.copy{margin:22px 0 18px;color:#98ada4;font-size:12px;line-height:1.6}.google{min-height:46px;display:flex;justify-content:center;align-items:center}.msg{margin-top:16px;padding:11px 12px;border-radius:10px;border:1px solid rgba(24,215,120,.22);background:rgba(24,215,120,.07);color:#bdf2d5;font-size:11px;line-height:1.5;overflow-wrap:anywhere}.msg.error{border-color:rgba(255,101,114,.28);background:rgba(255,101,114,.07);color:#ffafb6}.msg.warn{border-color:rgba(233,189,89,.30);background:rgba(233,189,89,.07);color:#eed28a}.loading{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:9px;color:#9cb0a7;font-size:11px}.spin{width:17px;height:17px;border:2px solid rgba(24,215,120,.16);border-top-color:#18d778;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}[hidden]{display:none!important}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Skill Fusion — Google Authentication</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#061710;color:#f4faf7}body{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 80% 0,rgba(23,205,116,.09),transparent 30%),linear-gradient(145deg,#071b14,#04110d)}.card{width:min(430px,100%);padding:28px;border:1px solid rgba(106,165,142,.18);border-radius:20px;background:linear-gradient(145deg,rgba(8,31,23,.98),rgba(5,23,17,.99));box-shadow:0 25px 70px rgba(0,0,0,.28)}.brand{display:flex;align-items:center;gap:13px}.logo{width:52px;height:52px;display:grid;place-items:center;border-radius:15px;border:1px solid rgba(36,224,135,.22);background:linear-gradient(145deg,#0a5c43,#07402f);color:#18dd7d;font-weight:900}.eyebrow{display:block;color:#18d778;font-size:10px;font-weight:900;letter-spacing:.14em}.brand h1{margin:3px 0 0;font-size:23px;line-height:1.1}.copy{margin:22px 0 18px;color:#98ada4;font-size:12px;line-height:1.6}.google{min-height:46px;display:flex;justify-content:center;align-items:center}.msg{margin-top:16px;padding:11px 12px;border-radius:10px;border:1px solid rgba(24,215,120,.22);background:rgba(24,215,120,.07);color:#bdf2d5;font-size:11px;line-height:1.5;overflow-wrap:anywhere}.msg.error{border-color:rgba(255,101,114,.28);background:rgba(255,101,114,.07);color:#ffafb6}.msg.warn{border-color:rgba(233,189,89,.30);background:rgba(233,189,89,.07);color:#eed28a}.loading{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:9px;color:#9cb0a7;font-size:11px}.spin{width:17px;height:17px;border:2px solid rgba(24,215,120,.16);border-top-color:#18d778;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}[hidden]{display:none!important}
+</style>
 </head>
 <body>
-  <main class="card">
-    <div class="brand"><div class="logo">SF</div><div><span class="eyebrow">SKILL FUSION</span><h1>Google Authentication</h1></div></div>
-    <p class="copy" id="copy">Pilih Google Account untuk melanjutkan.</p>
-    <div id="googleBtn" class="google"></div>
-    <div id="loading" class="loading" hidden><span class="spin"></span><span id="loadingText">Memverifikasi Google Account...</span></div>
-    <div id="msg" class="msg" hidden></div>
-  </main>
+<main class="card">
+  <div class="brand"><div class="logo">SF</div><div><span class="eyebrow">SKILL FUSION</span><h1>Google Authentication</h1></div></div>
+  <p class="copy" id="copy">Pilih Google Account untuk melanjutkan.</p>
+  <div id="googleBtn" class="google"></div>
+  <div id="loading" class="loading" hidden><span class="spin"></span><span id="loadingText">Memverifikasi Google Account...</span></div>
+  <div id="msg" class="msg" hidden></div>
+</main>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+(()=>{
+  "use strict";
+  const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
+  const CLIENT_ID="115969098046-alnc03479m380nhjk9n0fqtqhboa0081.apps.googleusercontent.com";
+  const MEMBER_URL="https://skillfusion.framer.website/Memberarea";
+  const FRAMER_ORIGIN="https://skillfusion.framer.website";
+  const qs=new URLSearchParams(location.search);
+  const mode=qs.get("mode")==="register"?"register":"login";
+  const callerOrigin=qs.get("origin")||"*";
+  const msg=document.getElementById("msg"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),host=document.getElementById("googleBtn");
+  let activePacket=null,ackReceived=false,fallbackTimer=null;
 
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script>
-  (()=>{
-    "use strict";
+  document.getElementById("copy").textContent=mode==="register"?"Daftar menggunakan Google Account Anda.":"Login menggunakan Google Account yang sudah terdaftar.";
+  const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
+  const busy=(on,text="Memverifikasi Google Account...")=>{loading.hidden=!on;loadingText.textContent=text;host.hidden=!!on};
 
-    const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
-    const CLIENT_ID="115969098046-alnc03479m380nhjk9n0fqtqhboa0081.apps.googleusercontent.com";
-    const MEMBER_URL="https://skillfusion.framer.website/Memberarea";
-    const FRAMER_ORIGIN="https://skillfusion.framer.website";
-    const qs=new URLSearchParams(location.search);
-    const mode=qs.get("mode")==="register"?"register":"login";
-    const callerOrigin=qs.get("origin")||"*";
-    const msg=document.getElementById("msg");
-    const loading=document.getElementById("loading");
-    const loadingText=document.getElementById("loadingText");
-    const host=document.getElementById("googleBtn");
+  function postPacket(packet){
+    try{
+      if(!window.opener||window.opener.closed)return false;
+      let sent=false;
+      try{window.opener.top.postMessage(packet,FRAMER_ORIGIN);sent=true}catch(_){}
+      try{window.opener.postMessage(packet,callerOrigin==="null"?"*":callerOrigin);sent=true}catch(_){}
+      return sent;
+    }catch(_){return false}
+  }
 
-    let handoffTimer=null;
-    let handoffDeadlineTimer=null;
-    let handoffPacket=null;
-    let handoffDone=false;
+  function notify(payload){postPacket({source:"skill-fusion-auth-relay",...payload})}
+  const closeSoon=(ms=350)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
 
-    document.getElementById("copy").textContent=mode==="register"
-      ?"Daftar menggunakan Google Account Anda."
-      :"Login menggunakan Google Account yang sudah terdaftar.";
-
-    const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
-    const busy=(on,text="Memverifikasi Google Account...")=>{loading.hidden=!on;loadingText.textContent=text;host.hidden=!!on};
-
-    function postPacket(packet){
-      try{
-        if(!window.opener||window.opener.closed)return false;
-        let sent=false;
-        try{window.opener.top.postMessage(packet,FRAMER_ORIGIN);sent=true}catch(_){}
-        try{window.opener.postMessage(packet,callerOrigin==="null"?"*":callerOrigin);sent=true}catch(_){}
-        return sent;
-      }catch(_){return false}
-    }
-
-    function notify(payload){
-      const packet={source:"skill-fusion-auth-relay",...payload};
-      postPacket(packet);
-    }
-
-    const closeSoon=(ms=420)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
-
-    function stopHandoff(){
-      clearInterval(handoffTimer);handoffTimer=null;
-      clearTimeout(handoffDeadlineTimer);handoffDeadlineTimer=null;
-    }
-
-    function startActiveHandoff(payload){
-      handoffDone=false;
-      handoffPacket={source:"skill-fusion-auth-relay",...payload};
-      busy(true,"Menyimpan session aman ke Member Area...");
-      show("");
-
-      const send=()=>{
-        if(handoffDone||!handoffPacket)return;
-        postPacket(handoffPacket);
-      };
-
-      send();
-      handoffTimer=setInterval(send,300);
-      handoffDeadlineTimer=setTimeout(()=>{
-        if(handoffDone)return;
-        stopHandoff();
-        busy(false);
-        show("Login Google berhasil, tetapi halaman Login belum mengonfirmasi penyimpanan session. Jangan buka Member Area dari link lama. Tutup popup ini, refresh Loginpage, lalu login sekali lagi.","warn");
-      },12000);
-    }
-
-    window.addEventListener("message",event=>{
-      const data=event.data||{};
-      if(data.source!=="skill-fusion-session-ack")return;
-      if(!handoffPacket||handoffDone)return;
-      if(data.ok){
-        handoffDone=true;
-        stopHandoff();
-        busy(true,"Session tersimpan. Membuka Member Area...");
-        show("Session aman berhasil disimpan.");
-        closeSoon(350);
-      }else{
-        handoffDone=true;
-        stopHandoff();
-        busy(false);
-        show(data.message||"Session gagal disimpan di halaman Login.","error");
+  function fallbackToMemberArea(){
+    if(ackReceived||!activePacket)return;
+    const token=String(activePacket.sessionToken||"").trim();
+    if(!token){busy(false);show("Session token tidak tersedia.","error");return}
+    busy(true,"Membuka Member Area...");
+    show("Login berhasil. Menyiapkan akses Member Area...");
+    const handoff=MEMBER_URL+"#sf_handoff="+encodeURIComponent(token);
+    try{
+      if(window.opener&&!window.opener.closed){
+        window.opener.top.location=handoff;
+        closeSoon(500);
+        return;
       }
-    });
+    }catch(_){}
+    busy(false);
+    show("Login berhasil tetapi Member Area tidak dapat dibuka otomatis. Tutup popup lalu coba lagi.","warn");
+  }
 
-    async function api(command,data={}){
-      const c=new AbortController();
-      const t=setTimeout(()=>c.abort(),35000);
-      try{
-        const r=await fetch(API_URL,{
-          method:"POST",
-          headers:{"Content-Type":"text/plain;charset=utf-8"},
-          cache:"no-store",
-          redirect:"follow",
-          signal:c.signal,
-          body:JSON.stringify({action:"member_auth",command,userAgent:navigator.userAgent,...data})
-        });
-        const raw=await r.text();
-        let p;
-        try{p=JSON.parse(raw||"{}")}catch(_){
-          const preview=String(raw||"").replace(/\s+/g," ").slice(0,180);
-          throw new Error("INVALID_SERVER_RESPONSE"+(preview?": "+preview:""));
-        }
-        if(!r.ok||p.success===false||p.ok===false){
-          const e=new Error(p.message||p.error||p.code||"AUTH_FAILED");
-          e.code=p.code||p.status||"";
-          throw e;
-        }
-        return p;
-      }catch(e){
-        if(e&&e.name==="AbortError")throw new Error("Server sedang lambat. Silakan coba lagi.");
-        throw e;
-      }finally{clearTimeout(t)}
+  function startActiveHandoff(payload){
+    activePacket={source:"skill-fusion-auth-relay",...payload};
+    ackReceived=false;
+    busy(true,"Menyimpan session aman...");
+    show("");
+    postPacket(activePacket);
+    clearTimeout(fallbackTimer);
+    fallbackTimer=setTimeout(fallbackToMemberArea,1800);
+  }
+
+  window.addEventListener("message",event=>{
+    const data=event.data||{};
+    if(data.source!=="skill-fusion-session-ack"||!activePacket)return;
+    if(data.ok){
+      ackReceived=true;
+      clearTimeout(fallbackTimer);
+      busy(true,"Session tersimpan. Membuka Member Area...");
+      show("Session aman berhasil disimpan.");
+      closeSoon(300);
+    }else{
+      clearTimeout(fallbackTimer);
+      fallbackToMemberArea();
     }
+  });
 
-    function isExistingActiveRegistration(reg){
-      const status=String(reg?.status||"").toUpperCase();
-      const text=String(reg?.message||"").trim();
-      return status==="ACTIVE"&&text==="Akun sudah aktif. Silakan Login.";
-    }
+  async function api(command,data={}){
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),35000);
+    try{
+      const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command,userAgent:navigator.userAgent,...data})});
+      const raw=await r.text();
+      let p;try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_SERVER_RESPONSE")}
+      if(!r.ok||p.success===false||p.ok===false){const e=new Error(p.message||p.error||p.code||"AUTH_FAILED");e.code=p.code||p.status||"";throw e}
+      return p;
+    }catch(e){if(e&&e.name==="AbortError")throw new Error("Server sedang lambat. Silakan coba lagi.");throw e}finally{clearTimeout(t)}
+  }
 
-    function isExistingPendingRegistration(reg){
-      const status=String(reg?.status||"").toUpperCase();
-      const text=String(reg?.message||"").trim();
-      return status==="PENDING"&&text==="Google Account berhasil diverifikasi. Akun menunggu persetujuan admin.";
-    }
+  function isExistingActiveRegistration(reg){return String(reg?.status||"").toUpperCase()==="ACTIVE"&&String(reg?.message||"").trim()==="Akun sudah aktif. Silakan Login."}
+  function isExistingPendingRegistration(reg){return String(reg?.status||"").toUpperCase()==="PENDING"&&String(reg?.message||"").trim()==="Google Account berhasil diverifikasi. Akun menunggu persetujuan admin."}
 
-    async function handleGoogle(response){
-      if(!response?.credential)return;
-      busy(true);
-      show("");
-
-      try{
-        if(mode==="register"){
-          const reg=await api("register",{credential:response.credential});
-          const status=String(reg.status||"").toUpperCase();
-
-          if(isExistingActiveRegistration(reg)){
-            const text="Email Google ini sudah terdaftar sebagai Member Skill Fusion. Silakan gunakan menu Login, bukan Sign Up / Register.";
-            show(text,"warn");
-            notify({ok:false,mode,status:"EMAIL_ALREADY_REGISTERED",message:text});
-            closeSoon(900);
-            return;
-          }
-
-          if(isExistingPendingRegistration(reg)){
-            const text="Email Google ini sudah terdaftar dan masih menunggu verifikasi admin. Anda tidak perlu mendaftar ulang.";
-            show(text,"warn");
-            notify({ok:true,mode,status:"PENDING",alreadyRegistered:true,message:text});
-            closeSoon(900);
-            return;
-          }
-
-          if(status==="PENDING"){
-            const text="Google Account berhasil diverifikasi. Akun sedang menunggu verifikasi admin Skill Fusion.";
-            show(text,"warn");
-            notify({ok:true,mode,status:"PENDING",alreadyRegistered:false,message:text});
-            closeSoon(900);
-            return;
-          }
-
-          if(status==="SUSPENDED"){
-            const text="Email Google ini sudah terdaftar, tetapi account sedang di-Suspend.";
-            show(text,"error");
-            notify({ok:false,mode,status:"SUSPENDED",message:text});
-            closeSoon(900);
-            return;
-          }
-
-          const login=await api("google_login",{credential:response.credential});
-          startActiveHandoff({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-          return;
-        }
-
+  async function handleGoogle(response){
+    if(!response?.credential)return;
+    busy(true);show("");
+    try{
+      if(mode==="register"){
+        const reg=await api("register",{credential:response.credential});
+        const status=String(reg.status||"").toUpperCase();
+        if(isExistingActiveRegistration(reg)){const text="Email Google ini sudah terdaftar sebagai Member Skill Fusion. Silakan gunakan menu Login, bukan Sign Up / Register.";show(text,"warn");notify({ok:false,mode,status:"EMAIL_ALREADY_REGISTERED",message:text});closeSoon(900);return}
+        if(isExistingPendingRegistration(reg)){const text="Email Google ini sudah terdaftar dan masih menunggu verifikasi admin. Anda tidak perlu mendaftar ulang.";show(text,"warn");notify({ok:true,mode,status:"PENDING",alreadyRegistered:true,message:text});closeSoon(900);return}
+        if(status==="PENDING"){const text="Google Account berhasil diverifikasi. Akun sedang menunggu verifikasi admin Skill Fusion.";show(text,"warn");notify({ok:true,mode,status:"PENDING",message:text});closeSoon(900);return}
+        if(status==="SUSPENDED"){const text="Email Google ini sudah terdaftar, tetapi account sedang di-Suspend.";show(text,"error");notify({ok:false,mode,status:"SUSPENDED",message:text});closeSoon(900);return}
         const login=await api("google_login",{credential:response.credential});
         startActiveHandoff({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-
-      }catch(e){
-        const code=String(e.code||"").toUpperCase();
-        let text=e.message||"Proses autentikasi gagal.";
-        let type="error";
-
-        if(code==="PENDING_APPROVAL"){
-          text="Google Account sudah terdaftar dan masih menunggu verifikasi admin Skill Fusion.";
-          type="warn";
-        }else if(code==="NOT_REGISTERED"){
-          text="Email belum terdaftar. Silakan Register terlebih dahulu.";
-          type="warn";
-        }else if(code==="ACCOUNT_SUSPENDED"){
-          text="Account sedang di-Suspend.";
-        }
-
-        show(text,type);
-        notify({ok:false,mode,status:code,message:text});
-        if(code==="PENDING_APPROVAL")closeSoon(900);
-      }finally{
-        if(!handoffPacket||handoffDone)busy(false);
+        return;
       }
+      const login=await api("google_login",{credential:response.credential});
+      startActiveHandoff({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
+    }catch(e){
+      const code=String(e.code||"").toUpperCase();let text=e.message||"Proses autentikasi gagal.",type="error";
+      if(code==="PENDING_APPROVAL"){text="Google Account sudah terdaftar dan masih menunggu verifikasi admin Skill Fusion.";type="warn"}
+      else if(code==="NOT_REGISTERED"){text="Email belum terdaftar. Silakan Register terlebih dahulu.";type="warn"}
+      else if(code==="ACCOUNT_SUSPENDED"){text="Account sedang di-Suspend."}
+      show(text,type);notify({ok:false,mode,status:code,message:text});if(code==="PENDING_APPROVAL")closeSoon(900);busy(false)
     }
+  }
 
-    function init(){
-      if(!window.google?.accounts?.id){setTimeout(init,120);return}
-      google.accounts.id.initialize({
-        client_id:CLIENT_ID,
-        callback:handleGoogle,
-        auto_select:false,
-        cancel_on_tap_outside:true,
-        ux_mode:"popup"
-      });
-      google.accounts.id.renderButton(host,{
-        type:"standard",
-        theme:"filled_black",
-        size:"large",
-        shape:"rectangular",
-        text:mode==="register"?"signup_with":"signin_with",
-        logo_alignment:"left",
-        width:Math.min(360,Math.max(260,host.clientWidth||320))
-      });
-    }
-
-    init();
-  })();
-  </script>
+  function init(){
+    if(!window.google?.accounts?.id){setTimeout(init,120);return}
+    google.accounts.id.initialize({client_id:CLIENT_ID,callback:handleGoogle,auto_select:false,cancel_on_tap_outside:true,ux_mode:"popup"});
+    google.accounts.id.renderButton(host,{type:"standard",theme:"filled_black",size:"large",shape:"rectangular",text:mode==="register"?"signup_with":"signin_with",logo_alignment:"left",width:Math.min(360,Math.max(260,host.clientWidth||320))});
+  }
+  init();
+})();
+</script>
 </body>
 </html>
