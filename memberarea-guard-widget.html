@@ -1,4 +1,4 @@
-<!-- SKILL FUSION MEMBER AREA GUARD — REV332 -->
+<!-- SKILL FUSION MEMBER AREA GUARD — REV335 -->
 <div id="sfMemberGuard" style="position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#0c0f0e;color:#eef5f1;font:600 13px Inter,system-ui,sans-serif;">
   <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border:1px solid #29322e;border-radius:12px;background:#151917;box-shadow:0 18px 55px rgba(0,0,0,.35)">
     <span style="width:17px;height:17px;border:2px solid #35413b;border-top-color:#16c878;border-radius:50%;animation:sfGuardSpin .75s linear infinite"></span>
@@ -9,6 +9,10 @@
 <script>
 (()=>{
   "use strict";
+
+  const isMemberPage=/\/memberarea\/?$/i.test(location.pathname);
+  if(!isMemberPage){document.documentElement.classList.remove("sf-member-locked");document.getElementById("sfMemberGuard")?.remove();return}
+
   document.documentElement.classList.add("sf-member-locked");
 
   const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
@@ -31,9 +35,6 @@
   function write(key,value){stores().forEach(s=>{try{s.setItem(key,String(value))}catch(_){}})}
   function clearSession(){stores().forEach(s=>{try{[SESSION_KEY,EXPIRES_KEY,EMAIL_KEY,ACTIVITY_KEY].forEach(k=>s.removeItem(k))}catch(_){}})}
 
-  // REV332 SECURITY: a session token in the URL is never accepted.
-  // If someone copies an old #sf_token URL to another device, the fragment is stripped
-  // and access still requires a valid session already stored in this browser.
   function stripLegacyTokenHash(){
     if(!/(?:^#|&)sf_token=/i.test(String(location.hash||"")))return false;
     try{history.replaceState(null,document.title,location.pathname+location.search)}catch(_){}
@@ -44,90 +45,36 @@
     const c=new AbortController();
     const timeout=setTimeout(()=>c.abort(),15000);
     try{
-      const r=await fetch(API_URL,{
-        method:"POST",
-        headers:{"Content-Type":"text/plain;charset=utf-8"},
-        cache:"no-store",
-        redirect:"follow",
-        signal:c.signal,
-        body:JSON.stringify({
-          action:"member_auth",
-          command,
-          sessionToken:token,
-          userAgent:navigator.userAgent||""
-        })
-      });
+      const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command,sessionToken:token,userAgent:navigator.userAgent||""})});
       const raw=await r.text();
-      let p;
-      try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_RESPONSE")}
-      if(!r.ok||p.success===false||p.ok===false||p.valid===false){
-        const e=new Error(p.message||p.code||p.error||"SESSION_INVALID");
-        e.code=p.code||"SESSION_INVALID";
-        throw e;
-      }
+      let p;try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_RESPONSE")}
+      if(!r.ok||p.success===false||p.ok===false||p.valid===false)throw new Error(p.message||p.code||p.error||"SESSION_INVALID");
       return p;
-    }finally{
-      clearTimeout(timeout);
-    }
+    }finally{clearTimeout(timeout)}
   }
 
   function redirectToLogin(reason){
     if(loggingOut)return;
     loggingOut=true;
-    clearTimeout(heartbeatTimer);
-    clearTimeout(idleTimer);
-    clearSession();
+    clearTimeout(heartbeatTimer);clearTimeout(idleTimer);clearSession();
     const join=LOGIN_URL.includes("?")?"&":"?";
     location.replace(LOGIN_URL+join+"member_reason="+encodeURIComponent(reason||"session"));
   }
 
-  async function logout(reason){
-    if(loggingOut)return;
-    try{if(token)await api("logout")}catch(_){}
-    redirectToLogin(reason||"logout");
-  }
-
+  async function logout(reason){if(loggingOut)return;try{if(token)await api("logout")}catch(_){}redirectToLogin(reason||"logout")}
   function noteActivity(){lastUserActivity=Date.now();write(ACTIVITY_KEY,lastUserActivity)}
   function isIdle(){return Date.now()-lastUserActivity>=IDLE_MS}
 
   function unlock(result){
-    if(result?.expiresAt)write(EXPIRES_KEY,result.expiresAt);
-    if(result?.member?.email)write(EMAIL_KEY,result.member.email);
+    if(result&&result.expiresAt)write(EXPIRES_KEY,result.expiresAt);
+    if(result&&result.member&&result.member.email)write(EMAIL_KEY,result.member.email);
     write(ACTIVITY_KEY,lastUserActivity);
     document.documentElement.classList.remove("sf-member-locked");
     document.getElementById("sfMemberGuard")?.remove();
   }
 
-  function scheduleIdle(){
-    clearTimeout(idleTimer);
-    idleTimer=setTimeout(async()=>{
-      if(isIdle()){
-        await logout("idle_timeout");
-        return;
-      }
-      scheduleIdle();
-    },5000);
-  }
-
-  function scheduleHeartbeat(){
-    clearTimeout(heartbeatTimer);
-    heartbeatTimer=setTimeout(async()=>{
-      if(loggingOut)return;
-      if(isIdle()){
-        await logout("idle_timeout");
-        return;
-      }
-      if(document.hidden){scheduleHeartbeat();return}
-      try{
-        const result=await api("heartbeat");
-        if(result.expiresAt)write(EXPIRES_KEY,result.expiresAt);
-      }catch(_){
-        redirectToLogin("session_expired");
-        return;
-      }
-      scheduleHeartbeat();
-    },HEARTBEAT_MS);
-  }
+  function scheduleIdle(){clearTimeout(idleTimer);idleTimer=setTimeout(async()=>{if(isIdle()){await logout("idle_timeout");return}scheduleIdle()},5000)}
+  function scheduleHeartbeat(){clearTimeout(heartbeatTimer);heartbeatTimer=setTimeout(async()=>{if(loggingOut)return;if(isIdle()){await logout("idle_timeout");return}if(document.hidden){scheduleHeartbeat();return}try{const result=await api("heartbeat");if(result.expiresAt)write(EXPIRES_KEY,result.expiresAt)}catch(_){redirectToLogin("session_expired");return}scheduleHeartbeat()},HEARTBEAT_MS)}
 
   ["pointerdown","keydown","touchstart","scroll","mousemove"].forEach(evt=>window.addEventListener(evt,noteActivity,{passive:true}));
 
@@ -135,60 +82,24 @@
     if(document.hidden||loggingOut)return;
     const saved=Number(read(ACTIVITY_KEY)||0);
     if(saved)lastUserActivity=Math.max(lastUserActivity,saved);
-    if(isIdle()){
-      await logout("idle_timeout");
-      return;
-    }
-    try{
-      const result=await api("validate_session");
-      if(result.expiresAt)write(EXPIRES_KEY,result.expiresAt);
-    }catch(_){
-      redirectToLogin("session_expired");
-    }
+    if(isIdle()){await logout("idle_timeout");return}
+    try{const result=await api("validate_session");if(result.expiresAt)write(EXPIRES_KEY,result.expiresAt)}catch(_){redirectToLogin("session_expired")}
   });
 
-  window.addEventListener("storage",e=>{
-    if(e.key===SESSION_KEY&&!e.newValue&&!loggingOut)redirectToLogin("session_cleared");
-  });
-
-  window.addEventListener("pagehide",()=>{
-    clearTimeout(heartbeatTimer);
-    clearTimeout(idleTimer);
-  });
-
-  window.SkillFusionMember={
-    logout:()=>logout("manual_logout"),
-    isLoggedIn:()=>!!token,
-    getEmail:()=>read(EMAIL_KEY)
-  };
+  window.addEventListener("storage",e=>{if(e.key===SESSION_KEY&&!e.newValue&&!loggingOut)redirectToLogin("session_cleared")});
+  window.addEventListener("pagehide",()=>{clearTimeout(heartbeatTimer);clearTimeout(idleTimer)});
+  window.SkillFusionMember={logout:()=>logout("manual_logout"),isLoggedIn:()=>!!token,getEmail:()=>read(EMAIL_KEY)};
 
   (async()=>{
     stripLegacyTokenHash();
-
-    // The only accepted session is the one already stored on THIS browser/device.
     token=read(SESSION_KEY);
     const savedActivity=Number(read(ACTIVITY_KEY)||0);
-    if(savedActivity)lastUserActivity=savedActivity;
-    else noteActivity();
+    if(savedActivity)lastUserActivity=savedActivity;else noteActivity();
 
-    if(!token){
-      redirectToLogin("login_required");
-      return;
-    }
+    if(!token){redirectToLogin("login_required");return}
+    if(isIdle()){await logout("idle_timeout");return}
 
-    if(isIdle()){
-      await logout("idle_timeout");
-      return;
-    }
-
-    try{
-      const result=await api("validate_session");
-      unlock(result);
-      scheduleIdle();
-      scheduleHeartbeat();
-    }catch(_){
-      redirectToLogin("session_expired");
-    }
+    try{const result=await api("validate_session");unlock(result);scheduleIdle();scheduleHeartbeat()}catch(_){redirectToLogin("session_expired")}
   })();
 })();
 </script>
