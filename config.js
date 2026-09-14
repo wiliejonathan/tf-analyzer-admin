@@ -26,8 +26,6 @@ window.TF_ADMIN_CONFIG = {
     const isAppsScriptWebApp = /^https:\/\/script\.google\.com\/macros\/s\//i.test(url);
     if (!isAppsScriptWebApp) return nativeFetch(input, opts);
 
-    // Do not let the older 9s/14s frontend AbortController cancel a legitimate
-    // Apps Script cold start. Keep a hard transport ceiling so requests cannot hang.
     const controller = new AbortController();
     const hardTimeoutMs = 35000;
     const timer = setTimeout(() => controller.abort(), hardTimeoutMs);
@@ -49,7 +47,7 @@ window.TF_ADMIN_CONFIG = {
 // Member Skill Fusion is loaded as a separate module so the existing
 // TF Analyzer license dashboard remains backward-compatible.
 (() => {
-  const version = "316";
+  const version = "317";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {
