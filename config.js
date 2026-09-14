@@ -1,6 +1,6 @@
 window.TF_ADMIN_CONFIG = {
   apiUrl: "https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec",
-  memberApiUrl: "",
+  memberApiUrl: "https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec",
   autoRefreshMs: 30000,
   memberRefreshMs: 30000,
   defaultPageSize: 10
@@ -49,7 +49,7 @@ window.TF_ADMIN_CONFIG = {
 // REV312 — Member Skill Fusion is loaded as a separate module so the existing
 // TF Analyzer license dashboard remains backward-compatible.
 (() => {
-  const version = "313";
+  const version = "314";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {
