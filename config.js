@@ -6,29 +6,22 @@ window.TF_ADMIN_CONFIG = {
   defaultPageSize: 10
 };
 
-// REV321
-// - Member Skill Fusion list renders immediately from last-known snapshot.
-// - Fresh Apps Script data is fetched in the background, never blocking the member UI.
-// - Duplicate list_members calls are deduplicated.
-// - Google Sheet row order is preserved and wiliejonathan1999@gmail.com stays #1.
-// - Idle auto-refresh arrow is static instead of spinning forever.
+// REV327 frontend transport/cache layer.
 (() => {
   "use strict";
 
-  if (window.__TF_REV321_PATCHED__ || typeof window.fetch !== "function") return;
-  window.__TF_REV321_PATCHED__ = true;
+  if (window.__TF_REV327_PATCHED__ || typeof window.fetch !== "function") return;
+  window.__TF_REV327_PATCHED__ = true;
 
   const PRIMARY_ADMIN_EMAIL = "wiliejonathan1999@gmail.com";
   const nativeFetch = window.fetch.bind(window);
   const nativeSort = Array.prototype.sort;
   const MEMBER_FRESH_MS = 30000;
   const MEMBER_STALE_MAX_MS = 6 * 60 * 60 * 1000;
-  const MEMBER_STORAGE_KEY = "tf_member_snapshot_rev321";
+  const MEMBER_STORAGE_KEY = "tf_member_snapshot_rev327";
 
-  // Initial snapshot comes from the current SF_Members sheet so the first open is instant.
-  // It is replaced automatically by the live backend response in the background.
   const BOOTSTRAP_MEMBERS = [
-    {memberId:"SFM-F3B5FE432E1E434FA8",email:"wiliejonathan1999@gmail.com",name:"",photoUrl:"",status:"ACTIVE",role:"MEMBER",online:false,createdAt:"2026-09-15T00:19:41+07:00",approvedAt:"2026-09-15T00:19:41+07:00",approvedBy:"AUTO:TF_LICENSE_DB",lastLoginAt:"",lastSeenAt:"",lastLogoutAt:"",notes:"Auto-active: TF Analyzer License Database"},
+    {memberId:"SFM-F3B5FE432E1E434FA8",email:"wiliejonathan1999@gmail.com",name:"Wilie Jonathan",photoUrl:"",status:"ACTIVE",role:"MEMBER",online:false,createdAt:"2026-09-15T00:19:41+07:00",approvedAt:"2026-09-15T00:19:41+07:00",approvedBy:"AUTO:TF_LICENSE_DB",lastLoginAt:"",lastSeenAt:"",lastLogoutAt:"",notes:"Auto-active: TF Analyzer License Database"},
     {memberId:"SFM-777336F1C05B4492B4",email:"winatabickson@gmail.com",name:"",photoUrl:"",status:"ACTIVE",role:"MEMBER",online:false,createdAt:"2026-09-15T00:19:41+07:00",approvedAt:"2026-09-15T00:19:41+07:00",approvedBy:"AUTO:TF_LICENSE_DB",lastLoginAt:"",lastSeenAt:"",lastLogoutAt:"",notes:"Auto-active: TF Analyzer License Database"},
     {memberId:"SFM-21EDE02E631241D590",email:"vincentzzz75@gmail.com",name:"",photoUrl:"",status:"ACTIVE",role:"MEMBER",online:false,createdAt:"2026-09-15T00:19:41+07:00",approvedAt:"2026-09-15T00:19:41+07:00",approvedBy:"AUTO:TF_LICENSE_DB",lastLoginAt:"",lastSeenAt:"",lastLogoutAt:"",notes:"Auto-active: TF Analyzer License Database"},
     {memberId:"SFM-847AFAD5647F418689",email:"arliyan@gmail.com",name:"",photoUrl:"",status:"ACTIVE",role:"MEMBER",online:false,createdAt:"2026-09-15T00:19:41+07:00",approvedAt:"2026-09-15T00:19:41+07:00",approvedBy:"AUTO:TF_LICENSE_DB",lastLoginAt:"",lastSeenAt:"",lastLogoutAt:"",notes:"Auto-active: TF Analyzer License Database"},
@@ -52,14 +45,13 @@ window.TF_ADMIN_CONFIG = {
     const out = Array.isArray(list) ? list.slice() : [];
     const index = out.findIndex(item => normalizeEmail(item && item.email) === PRIMARY_ADMIN_EMAIL);
     if (index > 0) {
-      const [admin] = out.splice(index, 1);
+      const admin = out.splice(index, 1)[0];
       out.unshift(admin);
     }
     return out;
   }
 
-  // app.js/member module contain their own sorts. Only neutralize those display sorts.
-  Array.prototype.sort = function tfRev321StableSheetSort(compareFn) {
+  Array.prototype.sort = function tfRev327StableSheetSort(compareFn) {
     if (typeof compareFn === "function" && Array.isArray(this) && this.length) {
       let src = "";
       try { src = Function.prototype.toString.call(compareFn); } catch (_) {}
@@ -201,7 +193,6 @@ window.TF_ADMIN_CONFIG = {
           window.dispatchEvent(new CustomEvent("tf-member-snapshot-updated", { detail: memberCache }));
         }
       } catch (_) {
-        // Keep last-known snapshot. The visible Member UI remains usable.
       } finally {
         memberFetchPromise = null;
       }
@@ -213,7 +204,7 @@ window.TF_ADMIN_CONFIG = {
 
   hydrateMemberCache();
 
-  window.fetch = async function tfRev321Fetch(input, init) {
+  window.fetch = async function tfRev327Fetch(input, init) {
     const opts = init ? { ...init } : {};
     const url = typeof input === "string" ? input : String(input && input.url ? input.url : input || "");
     const isAppsScriptWebApp = /^https:\/\/script\.google\.com\/macros\/s\//i.test(url);
@@ -224,14 +215,12 @@ window.TF_ADMIN_CONFIG = {
     const command = String(requestPayload && requestPayload.command || "").trim().toLowerCase();
     if (requestPayload && requestPayload.adminKey) lastAdminKey = String(requestPayload.adminKey || "").trim();
 
-    // Never block the Member Skill Fusion table on Apps Script.
     if (action === "member_admin" && command === "list_members") {
       const immediate = memberCache || memberPayload(BOOTSTRAP_MEMBERS, { bootstrap: true });
       setTimeout(() => fetchMembersInBackground(url, false), 0);
       return responseFromPayload(immediate, null);
     }
 
-    // Keep the instant snapshot aligned with management actions.
     if (action === "member_admin" && command !== "list_members") {
       patchCachedMemberFromMutation(command, requestPayload || {});
     }
@@ -264,11 +253,10 @@ window.TF_ADMIN_CONFIG = {
     }
   };
 
-  // Stop the small idle auto-refresh arrow from spinning continuously.
   function installIdleRefreshSpinnerFix() {
-    if (!document.getElementById("tfIdleRefreshSpinnerFixREV321")) {
+    if (!document.getElementById("tfIdleRefreshSpinnerFixREV327")) {
       const style = document.createElement("style");
-      style.id = "tfIdleRefreshSpinnerFixREV321";
+      style.id = "tfIdleRefreshSpinnerFixREV327";
       style.textContent = `
         .tf-idle-refresh-static,
         .tf-idle-refresh-static *,
@@ -309,7 +297,7 @@ window.TF_ADMIN_CONFIG = {
 
 // Member Skill Fusion modules.
 (() => {
-  const version = "321";
+  const version = "327";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {
@@ -334,5 +322,13 @@ window.TF_ADMIN_CONFIG = {
     summaryScript.defer = true;
     summaryScript.dataset.sfSummaryCarousel = "script";
     document.body.appendChild(summaryScript);
+  }
+
+  if (!document.querySelector('script[data-sf-presence-column]')) {
+    const presenceScript = document.createElement("script");
+    presenceScript.src = `member-presence-dot-rev326.js?v=${version}`;
+    presenceScript.defer = true;
+    presenceScript.dataset.sfPresenceColumn = "script";
+    document.body.appendChild(presenceScript);
   }
 })();
