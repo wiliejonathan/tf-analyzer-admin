@@ -184,3 +184,36 @@
     init();
   }
 })();
+
+// REV320 — Member registrations are self-service from the public Framer widget.
+// Remove the old manual "+ Tambah User" submenu/page from the admin UI.
+(() => {
+  "use strict";
+
+  function removeLegacyMemberAddUser() {
+    document.querySelectorAll('[data-sf-member-view="add-user"]').forEach(el => el.remove());
+    document.getElementById("sfMemberAddView")?.remove();
+
+    // Defensive: if an older cached module left the removed view selected,
+    // return Member Skill Fusion to Dashboard.
+    const section = document.getElementById("memberSkillFusionSection");
+    if (section?.classList.contains("active-section")) {
+      const dashboard = document.getElementById("sfMemberDashboardView");
+      const users = document.getElementById("sfMemberUsersView");
+      if (dashboard && users && dashboard.hidden && users.hidden) dashboard.hidden = false;
+    }
+  }
+
+  function startCleanup() {
+    removeLegacyMemberAddUser();
+    const observer = new MutationObserver(removeLegacyMemberAddUser);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener("pagehide", () => observer.disconnect(), { once: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startCleanup, { once: true });
+  } else {
+    startCleanup();
+  }
+})();
