@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#061710">
+  <title>Skill Fusion — Verifikasi Member</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#061710;color:#f5faf7}body{min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 78% 0,rgba(18,217,122,.10),transparent 32%),linear-gradient(145deg,#071b14,#04110d)}
+    .card{width:min(520px,100%);padding:30px;border:1px solid rgba(91,174,141,.20);border-radius:22px;background:linear-gradient(145deg,rgba(8,31,23,.99),rgba(5,23,17,.99));box-shadow:0 30px 90px rgba(0,0,0,.34)}
+    .brand{display:flex;align-items:center;gap:14px}.logo{width:56px;height:56px;display:grid;place-items:center;border:1px solid rgba(37,221,133,.22);border-radius:16px;background:linear-gradient(145deg,#0a5b43,#07412f);color:#18dd7d;font-weight:900}.eyebrow{display:block;color:#18d778;font-size:10px;font-weight:900;letter-spacing:.15em}.brand h1{margin:4px 0 0;font-size:24px;line-height:1.08;letter-spacing:-.035em}.line{height:1px;margin:24px 0;background:linear-gradient(90deg,transparent,rgba(129,176,157,.22),transparent)}
+    .state{text-align:center;padding:10px 0 2px}.rings{position:relative;width:92px;height:92px;margin:0 auto 18px;display:grid;place-items:center}.ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(18,217,122,.15)}.ring.a{border-top-color:#12d97a;animation:spin 1s linear infinite}.ring.b{inset:13px;border-style:dashed;border-color:rgba(18,217,122,.35);animation:spin 1.7s linear infinite reverse}.core{width:48px;height:48px;display:grid;place-items:center;border-radius:50%;border:1px solid rgba(18,217,122,.34);background:rgba(18,217,122,.10);color:#20e488;font-size:20px;font-weight:900}@keyframes spin{to{transform:rotate(360deg)}}
+    .state h2{margin:0;color:#fff;font-size:25px;letter-spacing:-.035em}.state p{margin:10px auto 0;max-width:410px;color:#8fa69c;font-size:12px;line-height:1.65}.result{margin-top:20px;padding:14px;border-radius:11px;border:1px solid rgba(18,217,122,.24);background:rgba(18,217,122,.07);color:#c9f3dc;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.result.error{border-color:rgba(255,101,114,.30);background:rgba(255,101,114,.07);color:#ffb1b8}.result.warn{border-color:rgba(233,189,89,.30);background:rgba(233,189,89,.07);color:#efd38e}.btn{margin-top:18px;width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(36,226,135,.30);border-radius:10px;background:linear-gradient(180deg,#16d778,#0cb861);color:#03140d;font-size:12px;font-weight:900;text-decoration:none}.foot{margin-top:22px;text-align:center;color:#526b60;font-size:9px}.dot{display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:50%;background:#18d778;box-shadow:0 0 0 4px rgba(24,215,120,.07)}[hidden]{display:none!important}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand"><div class="logo">SF</div><div><span class="eyebrow">SKILL FUSION</span><h1>Verifikasi Member</h1></div></div>
+    <div class="line"></div>
+    <section class="state">
+      <div id="rings" class="rings"><span class="ring a"></span><span class="ring b"></span><span id="core" class="core">✓</span></div>
+      <h2 id="title">Memverifikasi Member...</h2>
+      <p id="subtitle">Mohon tunggu. Sistem sedang memproses persetujuan akun melalui link aman satu kali pakai.</p>
+      <div id="result" class="result" hidden></div>
+      <a id="dashboardBtn" class="btn" href="https://wiliejonathan.github.io/tf-analyzer-admin/" hidden>Buka Admin Dashboard <span>→</span></a>
+    </section>
+    <div class="foot"><span class="dot"></span>Secure Member Approval • Skill Fusion</div>
+  </main>
+
+  <script>
+  (()=>{
+    "use strict";
+    const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
+    const token=new URLSearchParams(location.search).get("token")||"";
+    const title=document.getElementById("title"),subtitle=document.getElementById("subtitle"),result=document.getElementById("result"),rings=document.getElementById("rings"),core=document.getElementById("core"),dashboardBtn=document.getElementById("dashboardBtn");
+
+    function finish(kind,heading,text){
+      rings.querySelectorAll(".ring").forEach(el=>el.style.animation="none");
+      result.className="result"+(kind?" "+kind:"");
+      result.textContent=text;
+      result.hidden=false;
+      title.textContent=heading;
+      subtitle.textContent=kind==="error"?"Akun tidak diubah.":"Proses approval selesai dan status member sudah diperbarui.";
+      core.textContent=kind==="error"?"!":"✓";
+      dashboardBtn.hidden=false;
+    }
+
+    async function approve(){
+      if(!token){finish("error","Link Tidak Valid","Token verifikasi tidak ditemukan pada link email.");return}
+      const c=new AbortController();const timer=setTimeout(()=>c.abort(),35000);
+      try{
+        const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command:"approve_registration",approvalToken:token})});
+        const raw=await r.text();let p;try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("Response server tidak valid.")}
+        if(!r.ok||p.success===false||p.ok===false){const e=new Error(p.message||p.error||p.code||`HTTP_${r.status}`);e.code=p.code||"";throw e}
+        finish("","Member Berhasil Diaktifkan",p.message||`Akun ${p.email||"member"} sudah ACTIVE. Email konfirmasi telah dikirim ke user.`);
+      }catch(e){
+        const code=String(e.code||"").toUpperCase();
+        if(code==="APPROVAL_ALREADY_USED") finish("warn","Link Sudah Digunakan",e.message||"Link approval ini sudah pernah digunakan.");
+        else if(code==="APPROVAL_EXPIRED") finish("error","Link Kedaluwarsa",e.message||"Link approval sudah kedaluwarsa.");
+        else finish("error","Verifikasi Gagal",e.name==="AbortError"?"Server sedang lambat. Silakan buka link kembali.":(e.message||"Approval gagal."));
+      }finally{clearTimeout(timer)}
+    }
+    approve();
+  })();
+  </script>
+</body>
+</html>
