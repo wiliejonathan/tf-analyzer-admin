@@ -24,6 +24,7 @@
   <script>
   (()=>{
     "use strict";
+
     const API_URL="https://script.google.com/macros/s/AKfycbzUbx40vGvuCS4hQEOdfs-DeSU_TY-9zWXXPZzOKn3D9h0m5pQQYD6GGNCefufvsrv2eA/exec";
     const CLIENT_ID="115969098046-alnc03479m380nhjk9n0fqtqhboa0081.apps.googleusercontent.com";
     const MEMBER_URL="https://skillfusion.framer.website/Memberarea";
@@ -33,7 +34,10 @@
     const msg=document.getElementById("msg");
     const loading=document.getElementById("loading");
     const host=document.getElementById("googleBtn");
-    document.getElementById("copy").textContent=mode==="register"?"Daftar menggunakan Google Account Anda.":"Login menggunakan Google Account yang sudah terdaftar.";
+
+    document.getElementById("copy").textContent=mode==="register"
+      ?"Daftar menggunakan Google Account Anda."
+      :"Login menggunakan Google Account yang sudah terdaftar.";
 
     const show=(text,type="")=>{msg.textContent=text||"";msg.className="msg"+(type?" "+type:"");msg.hidden=!text};
     const busy=on=>{loading.hidden=!on;host.hidden=!!on};
@@ -41,50 +45,147 @@
     const closeSoon=(ms=420)=>setTimeout(()=>{try{window.close()}catch(_){}},ms);
 
     async function api(command,data={}){
-      const c=new AbortController();const t=setTimeout(()=>c.abort(),35000);
+      const c=new AbortController();
+      const t=setTimeout(()=>c.abort(),35000);
       try{
-        const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},cache:"no-store",redirect:"follow",signal:c.signal,body:JSON.stringify({action:"member_auth",command,userAgent:navigator.userAgent,...data})});
-        const raw=await r.text();let p;try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_SERVER_RESPONSE")}
-        if(!r.ok||p.success===false||p.ok===false){const e=new Error(p.message||p.error||p.code||"AUTH_FAILED");e.code=p.code||p.status||"";throw e}return p;
-      }catch(e){if(e&&e.name==="AbortError")throw new Error("Server sedang lambat. Silakan coba lagi.");throw e}finally{clearTimeout(t)}
+        const r=await fetch(API_URL,{
+          method:"POST",
+          headers:{"Content-Type":"text/plain;charset=utf-8"},
+          cache:"no-store",
+          redirect:"follow",
+          signal:c.signal,
+          body:JSON.stringify({action:"member_auth",command,userAgent:navigator.userAgent,...data})
+        });
+        const raw=await r.text();
+        let p;
+        try{p=JSON.parse(raw||"{}")}catch(_){throw new Error("INVALID_SERVER_RESPONSE")}
+        if(!r.ok||p.success===false||p.ok===false){
+          const e=new Error(p.message||p.error||p.code||"AUTH_FAILED");
+          e.code=p.code||p.status||"";
+          throw e;
+        }
+        return p;
+      }catch(e){
+        if(e&&e.name==="AbortError")throw new Error("Server sedang lambat. Silakan coba lagi.");
+        throw e;
+      }finally{
+        clearTimeout(t);
+      }
+    }
+
+    function isExistingActiveRegistration(reg){
+      const status=String(reg?.status||"").toUpperCase();
+      const text=String(reg?.message||"").trim();
+      return status==="ACTIVE" && text==="Akun sudah aktif. Silakan Login.";
+    }
+
+    function isExistingPendingRegistration(reg){
+      const status=String(reg?.status||"").toUpperCase();
+      const text=String(reg?.message||"").trim();
+      return status==="PENDING" && text==="Google Account berhasil diverifikasi. Akun menunggu persetujuan admin.";
     }
 
     async function handleGoogle(response){
-      if(!response?.credential)return;busy(true);show("");
+      if(!response?.credential)return;
+      busy(true);
+      show("");
+
       try{
         if(mode==="register"){
           const reg=await api("register",{credential:response.credential});
           const status=String(reg.status||"").toUpperCase();
+
+          // Existing ACTIVE member: do not silently log them in from Sign Up.
+          if(isExistingActiveRegistration(reg)){
+            const text="Email Google ini sudah terdaftar sebagai Member Skill Fusion. Silakan gunakan menu Login, bukan Sign Up / Register.";
+            show(text,"warn");
+            notify({ok:false,mode,status:"EMAIL_ALREADY_REGISTERED",message:text});
+            closeSoon(650);
+            return;
+          }
+
+          // Existing PENDING member: make it clear that re-registering is unnecessary.
+          if(isExistingPendingRegistration(reg)){
+            const text="Email Google ini sudah terdaftar dan masih menunggu verifikasi admin. Anda tidak perlu mendaftar ulang.";
+            show(text,"warn");
+            notify({ok:true,mode,status:"PENDING",alreadyRegistered:true,message:text});
+            closeSoon(650);
+            return;
+          }
+
           if(status==="PENDING"){
             const text="Google Account berhasil diverifikasi. Akun sedang menunggu verifikasi admin Skill Fusion.";
-            show(text,"warn");notify({ok:true,mode,status:"PENDING",message:text});closeSoon();return;
+            show(text,"warn");
+            notify({ok:true,mode,status:"PENDING",alreadyRegistered:false,message:text});
+            closeSoon();
+            return;
           }
+
           if(status==="SUSPENDED"){
-            const text="Account sedang di-Suspend.";
-            show(text,"error");notify({ok:false,mode,status:"SUSPENDED",message:text});closeSoon();return;
+            const text="Email Google ini sudah terdaftar, tetapi account sedang di-Suspend.";
+            show(text,"error");
+            notify({ok:false,mode,status:"SUSPENDED",message:text});
+            closeSoon(650);
+            return;
           }
+
+          // Brand-new TF Analyzer license client may be auto-activated by register().
+          // This is not treated as a duplicate registration.
           const login=await api("google_login",{credential:response.credential});
           notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-          show("Account aktif. Membuka Member Area...");closeSoon(250);return;
+          show("Account aktif. Membuka Member Area...");
+          closeSoon(250);
+          return;
         }
+
         const login=await api("google_login",{credential:response.credential});
         notify({ok:true,mode,status:"ACTIVE",sessionToken:login.sessionToken,expiresAt:login.expiresAt,member:login.member,redirectUrl:login.redirectUrl||MEMBER_URL});
-        show("Login berhasil. Membuka Member Area...");closeSoon(250);
+        show("Login berhasil. Membuka Member Area...");
+        closeSoon(250);
+
       }catch(e){
         const code=String(e.code||"").toUpperCase();
-        let text=e.message||"Proses autentikasi gagal.";let type="error";
-        if(code==="PENDING_APPROVAL"){text="Google Account berhasil diverifikasi. Akun masih menunggu verifikasi admin Skill Fusion.";type="warn"}
-        else if(code==="NOT_REGISTERED"){text="Email belum terdaftar. Silakan Register terlebih dahulu.";type="warn"}
-        else if(code==="ACCOUNT_SUSPENDED"){text="Account sedang di-Suspend."}
-        show(text,type);notify({ok:false,mode,status:code,message:text});if(code==="PENDING_APPROVAL")closeSoon();
-      }finally{busy(false)}
+        let text=e.message||"Proses autentikasi gagal.";
+        let type="error";
+
+        if(code==="PENDING_APPROVAL"){
+          text="Google Account sudah terdaftar dan masih menunggu verifikasi admin Skill Fusion.";
+          type="warn";
+        }else if(code==="NOT_REGISTERED"){
+          text="Email belum terdaftar. Silakan Register terlebih dahulu.";
+          type="warn";
+        }else if(code==="ACCOUNT_SUSPENDED"){
+          text="Account sedang di-Suspend.";
+        }
+
+        show(text,type);
+        notify({ok:false,mode,status:code,message:text});
+        if(code==="PENDING_APPROVAL")closeSoon();
+      }finally{
+        busy(false);
+      }
     }
 
     function init(){
       if(!window.google?.accounts?.id){setTimeout(init,120);return}
-      google.accounts.id.initialize({client_id:CLIENT_ID,callback:handleGoogle,auto_select:false,cancel_on_tap_outside:true,ux_mode:"popup"});
-      google.accounts.id.renderButton(host,{type:"standard",theme:"filled_black",size:"large",shape:"rectangular",text:mode==="register"?"signup_with":"signin_with",logo_alignment:"left",width:Math.min(360,Math.max(260,host.clientWidth||320))});
+      google.accounts.id.initialize({
+        client_id:CLIENT_ID,
+        callback:handleGoogle,
+        auto_select:false,
+        cancel_on_tap_outside:true,
+        ux_mode:"popup"
+      });
+      google.accounts.id.renderButton(host,{
+        type:"standard",
+        theme:"filled_black",
+        size:"large",
+        shape:"rectangular",
+        text:mode==="register"?"signup_with":"signin_with",
+        logo_alignment:"left",
+        width:Math.min(360,Math.max(260,host.clientWidth||320))
+      });
     }
+
     init();
   })();
   </script>
