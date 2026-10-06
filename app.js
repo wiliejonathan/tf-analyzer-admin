@@ -203,7 +203,7 @@
   }
 
   function displayStatus(user) {
-    return isAdminUser(user) ? "ADMIN" : (user?.status || "-");
+    return isAdminUser(user) ? "ADMIN" : (isExpired(user) ? "EXPIRED" : (user?.status || "-"));
   }
 
   function searchableText(user) {
@@ -220,10 +220,12 @@
     const value = String(user.expiredAt || "").trim();
     if (!value || /^(PERMANENT|-)$/.test(value.toUpperCase())) return null;
     const months = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
-    const match = value.toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})\s+(\d{2}):(\d{2})\s+wib$/);
+    const englishMonths = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    const match = value.toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s+wib$/);
+    const month = match ? Math.max(months.indexOf(match[2]), englishMonths.indexOf(match[2])) : -1;
     let date;
-    if (match && months.includes(match[2])) {
-      date = new Date(Date.UTC(+match[3], months.indexOf(match[2]), +match[1], +match[4] - 7, +match[5]));
+    if (match && month >= 0) {
+      date = new Date(Date.UTC(+match[3], month, +match[1], +match[4] - 7, +match[5], +(match[6] || 0)));
     } else {
       date = new Date(value);
     }
@@ -243,7 +245,7 @@
 
   function updateStats() {
     const total = users.length;
-    const active = users.filter(u => u.validNow).length;
+    const active = users.filter(u => u.validNow && !isExpired(u)).length;
     const pc = users.filter(u => u.pcOnline).length;
     const mobile = users.filter(u => u.mobileOnline).length;
     const expired = users.filter(isExpired).length;
@@ -287,7 +289,7 @@
   function statusPill(user, query) {
     const label = displayStatus(user);
     if (isAdminUser(user)) return `<span class="state-pill admin">${highlight(label, query)}</span>`;
-    const validClass = user.validNow ? "" : " inactive";
+    const validClass = user.validNow && !isExpired(user) ? "" : " inactive";
     return `<span class="state-pill${validClass}">${highlight(label, query)}</span>`;
   }
 
@@ -1020,6 +1022,37 @@
   }
 
   async function bulkEmail(command, update) {
+    if (update) {
+      setBusy(true, "Memeriksa lisensi penerima email update...");
+      try {
+        // Refresh immediately before sending; never rely on a stale dashboard snapshot.
+        const snapshot = await callApi("list_users");
+        if (!Array.isArray(snapshot.users)) throw new Error("Data lisensi tidak tersedia. Email update tidak dikirim.");
+        applyUsers(snapshot.users);
+        const recipients = users.filter(user => user.validNow === true && !isExpired(user) && user.email && user.licenseId);
+        const skipped = users.length - recipients.length;
+        if (!recipients.length) {
+          showToast("Tidak ada lisensi aktif yang dapat menerima email update.");
+          return;
+        }
+        if (!confirm(`Kirim EMAIL UPDATE ke ${recipients.length} user aktif?\n${skipped} user expired/tidak aktif dilewati.\n\nPerhatikan kuota email harian Apps Script/Gmail.`)) return;
+        let sent = 0;
+        let failed = 0;
+        let expiredDuringSend = 0;
+        for (const user of recipients) {
+          if (isExpired(user)) { expiredDuringSend++; continue; }
+          setBusy(true, `Mengirim email update ${sent + failed + expiredDuringSend + 1}/${recipients.length}...`);
+          try {
+            const result = await callApi("send_update_email", { licenseId: user.licenseId });
+            if (result.result?.success === false || result.result?.ok === false) failed++;
+            else sent++;
+          } catch (_) { failed++; }
+        }
+        showToast(`Selesai. Sent: ${sent}, skipped: ${skipped + expiredDuringSend}, failed: ${failed}.`, failed > 0);
+      } catch (err) { showToast(err.message || String(err), true); }
+      finally { setBusy(false); }
+      return;
+    }
     const text = update ? "Kirim EMAIL UPDATE ke SEMUA license yang masih aktif?" : "Kirim EMAIL TOKEN ke SEMUA license yang masih aktif?";
     if (!confirm(text + "\n\nPerhatikan kuota email harian Apps Script/Gmail.")) return;
     setBusy(true, update ? "Mengirim email update ke semua user..." : "Mengirim email ke semua user...");
