@@ -854,3 +854,19 @@ body.modal-open { overflow: hidden; }
   .reset-all-summary { grid-template-columns: 1fr; }
   .reset-all-summary small { grid-column: auto; }
 }
+
+
+/* Shared, in-flow Action submenu for license and SkillFusion users. */
+.stat-card small.expired-count { color:#ff5252; margin-top:6px; font-weight:700; }
+.expiry-value { display:inline-block; min-width:100px; line-height:1.5; }
+.expiry-value.expired { color:#ff5252; font-weight:700; }
+.actions.action-dropdown-cell { min-width:110px; }
+.user-action-menu { width:120px; max-width:100%; }
+.user-action-menu summary { list-style:none; cursor:pointer; width:32px; height:30px; display:grid; place-items:center; border:1px solid #365248; border-radius:6px; background:#11251e; color:#bde5d4; }
+.user-action-menu summary::-webkit-details-marker { display:none; }
+.user-action-menu summary:focus-visible { outline:2px solid #48d79b; outline-offset:2px; }
+.action-triangle { display:inline-block; font-size:11px; }
+.user-action-menu[open] .action-triangle { transform:rotate(90deg); }
+.action-menu-items { display:flex; flex-direction:column; gap:6px; padding:8px 0 2px; }
+.action-menu-items button { width:100%; min-height:30px; flex:none; text-align:left; padding:0 10px; }
+.user-card-actions .user-action-menu { margin-left:auto; }

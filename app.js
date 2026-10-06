@@ -45,7 +45,7 @@
   const els = {
     loginView: $("loginView"), appView: $("appView"), loginForm: $("loginForm"), adminKeyInput: $("adminKeyInput"), toggleAdminKeyVisibility: $("toggleAdminKeyVisibility"), rememberAdminKey: $("rememberAdminKey"), configWarning: $("configWarning"),
     lockBtn: $("lockBtn"), dashboardSection: $("dashboardSection"), addUserSection: $("addUserSection"), settingsSection: $("settingsSection"), usersSection: $("usersSection"),
-    statTotal: $("statTotal"), statActive: $("statActive"), statPc: $("statPc"), statMobile: $("statMobile"), sideTotal: $("sideTotal"), sidePc: $("sidePc"), sideMobile: $("sideMobile"), sideActive: $("sideActive"), sideExpired: $("sideExpired"),
+    statTotal: $("statTotal"), statActive: $("statActive"), statExpired: $("statExpired"), statPc: $("statPc"), statMobile: $("statMobile"), sideTotal: $("sideTotal"), sidePc: $("sidePc"), sideMobile: $("sideMobile"), sideActive: $("sideActive"), sideExpired: $("sideExpired"),
     searchInput: $("searchInput"), searchCount: $("searchCount"), usersBody: $("usersBody"), mobileUsers: $("mobileUsers"), emptyState: $("emptyState"),
     addUserForm: $("addUserForm"), newEmail: $("newEmail"), newPlan: $("newPlan"), newTokenResult: $("newTokenResult"), newTokenValue: $("newTokenValue"), copyNewTokenBtn: $("copyNewTokenBtn"),
     resetAllBtn: $("resetAllBtn"), sendAllBtn: $("sendAllBtn"), sendAllUpdateBtn: $("sendAllUpdateBtn"), prevPageBtn: $("prevPageBtn"), nextPageBtn: $("nextPageBtn"), pageButtons: $("pageButtons"), pageSummary: $("pageSummary"), pageSizeSelect: $("pageSizeSelect"),
@@ -216,14 +216,40 @@
     return q ? users.filter(u => searchableText(u).includes(q)) : users.slice();
   }
 
+  function expiryDate(user) {
+    const value = String(user.expiredAt || "").trim();
+    if (!value || /^(PERMANENT|-)$/.test(value.toUpperCase())) return null;
+    const months = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+    const match = value.toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})\s+(\d{2}):(\d{2})\s+wib$/);
+    let date;
+    if (match && months.includes(match[2])) {
+      date = new Date(Date.UTC(+match[3], months.indexOf(match[2]), +match[1], +match[4] - 7, +match[5]));
+    } else {
+      date = new Date(value);
+    }
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function isExpired(user) {
+    const date = expiryDate(user);
+    return String(user.status || "").toUpperCase() === "EXPIRED" || Boolean(date && date.getTime() <= Date.now());
+  }
+
+  function expiryHtml(user) {
+    const value = String(user.expiredAt || "").trim();
+    const label = value || (/PERMANENT/i.test(user.plan || "") ? "PERMANENT" : "Belum tersedia");
+    return `<span class="expiry-value${isExpired(user) ? " expired" : ""}">${escapeHtml(label)}</span>`;
+  }
+
   function updateStats() {
     const total = users.length;
     const active = users.filter(u => u.validNow).length;
     const pc = users.filter(u => u.pcOnline).length;
     const mobile = users.filter(u => u.mobileOnline).length;
-    const expired = Math.max(0, total - active);
+    const expired = users.filter(isExpired).length;
     els.statTotal.textContent = total;
     els.statActive.textContent = active;
+    els.statExpired.textContent = expired;
     els.statPc.textContent = pc;
     els.statMobile.textContent = mobile;
     els.sideTotal.textContent = total;
@@ -242,10 +268,10 @@
     const deleteButton = managementMode
       ? `<button class="action-delete" data-action="delete_user" data-id="${id}" title="Delete User" aria-label="Delete user ${escapeHtml(user.email || "")}">×</button>`
       : "";
-    return `<button class="action-reset" data-action="reset_pc" data-id="${id}">Reset PC</button>
+    return `<details class="user-action-menu"><summary aria-label="Action ${escapeHtml(user.email || "user")}" title="Action"><span class="action-triangle" aria-hidden="true">▶</span></summary><div class="action-menu-items"><button class="action-reset" data-action="reset_pc" data-id="${id}">Reset PC</button>
       <button class="action-reset" data-action="reset_mobile" data-id="${id}">Reset Mobile</button>
       <button class="action-mail" data-action="send_email" data-id="${id}">Email</button>
-      <button class="action-update" data-action="send_update_email" data-id="${id}">Update</button>${deleteButton}`;
+      <button class="action-update" data-action="send_update_email" data-id="${id}">Update</button>${deleteButton}</div></details>`;
   }
 
   function editableEmailHtml(user, query, compact = false) {
@@ -281,9 +307,10 @@
       <td>${managementMode ? editablePlanHtml(user) : `<span class="plan-pill">${highlight(user.plan || "-", query)}</span>`}</td>
       <td><div class="token-box"><span class="token-text" title="${escapeHtml(user.token || "")}">${highlight(user.token || "-", query)}</span><button class="action-mail" data-action="copy" data-token="${escapeHtml(user.token || "")}">Copy</button></div></td>
       <td>${statusPill(user, query)}<div style="margin-top:4px;color:#63766f;font-size:8px">${highlight(user.licenseId || "", query)}</div></td>
+      <td>${expiryHtml(user)}</td>
       <td>${highlight(user.lastSeenPc || "-", query)}</td>
       <td>${highlight(user.lastSeenMobile || "-", query)}</td>
-      <td><div class="actions">${actionButtons(user)}</div></td>
+      <td><div class="actions action-dropdown-cell">${actionButtons(user)}</div></td>
     </tr>`;
   }
 
@@ -294,6 +321,7 @@
         <div class="user-field"><span>Plan</span><strong>${managementMode ? editablePlanHtml(user, true) : highlight(user.plan || "-", query)}</strong></div>
         <div class="user-field"><span>Status</span><strong>${statusPill(user, query)}</strong></div>
         <div class="user-field"><span>Token</span><strong>${highlight(user.token || "-", query)}</strong></div>
+        <div class="user-field"><span>Expired</span><strong>${expiryHtml(user)}</strong></div>
         <div class="user-field"><span>Last Seen PC</span><strong>${highlight(user.lastSeenPc || "-", query)}</strong></div>
         <div class="user-field"><span>Last Seen Mobile</span><strong>${highlight(user.lastSeenMobile || "-", query)}</strong></div>
       </div>

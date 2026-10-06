@@ -239,7 +239,7 @@
         <section class="panel sf-member-panel">
           <div class="sf-member-table-wrap">
             <table class="sf-member-table">
-              <thead><tr><th>Foto</th><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Terdaftar</th><th>Last Seen</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Foto</th><th>Email</th><th>Nama</th><th>Status</th><th>Online</th><th>Terdaftar</th><th>Last Seen</th><th>Action</th></tr></thead>
               <tbody id="sfMemberUsersBody"></tbody>
             </table>
           </div>
@@ -395,7 +395,7 @@
     if (status === "SUSPENDED") out.push(`<button class="sf-member-action" data-member-action="activate" data-email="${email}">Aktifkan</button>`);
     out.push(`<button class="sf-member-action" data-member-action="resend" data-email="${email}">Email</button>`);
     out.push(`<button class="sf-member-action danger" data-member-action="remove" data-email="${email}">Remove</button>`);
-    return out.join("");
+    return `<details class="user-action-menu"><summary aria-label="Action ${esc(m.email || "member")}" title="Action"><span class="action-triangle" aria-hidden="true">▶</span></summary><div class="action-menu-items">${out.join("")}</div></details>`;
   }
 
   function renderManagement() {

@@ -297,7 +297,7 @@ window.TF_ADMIN_CONFIG = {
 
 // Member Skill Fusion modules.
 (() => {
-  const version = "327";
+  const version = "20261006";
   const head = document.head || document.getElementsByTagName("head")[0];
 
   if (!document.querySelector('link[data-sf-member-module]')) {

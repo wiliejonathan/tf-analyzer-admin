@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark" />
   <title>TF Analyzer Analyst — License Admin</title>
   <link rel="preload" href="assets/tf-analyzer-primary-v306.webp" as="image" type="image/webp" fetchpriority="high" />
-  <link rel="stylesheet" href="styles.css?v=311" />
+  <link rel="stylesheet" href="styles.css?v=20261006" />
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -120,7 +120,7 @@
             <div class="stat-icon">◎</div>
           </article>
           <article class="stat-card">
-            <div><span>LICENSE ACTIVE</span><strong id="statActive">0</strong><small>Lisensi Aktif</small></div>
+            <div><span>LICENSE ACTIVE</span><strong id="statActive">0</strong><small>Lisensi Aktif</small><small class="expired-count">Expired User : <b id="statExpired">0</b></small></div>
             <div class="stat-icon">◆</div>
           </article>
           <article class="stat-card">
@@ -163,9 +163,10 @@
                   <th>Plan</th>
                   <th>Token</th>
                   <th>License</th>
+                  <th>Expired</th>
                   <th>Last Seen PC</th>
                   <th>Last Seen Mobile</th>
-                  <th>Aksi</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
@@ -388,7 +389,7 @@
   </div>
   <div id="toast" class="toast" hidden></div>
 
-  <script src="config.js?v=311"></script>
-  <script src="app.js?v=311"></script>
+  <script src="config.js?v=20261006"></script>
+  <script src="app.js?v=20261006"></script>
 </body>
 </html>
