@@ -857,7 +857,7 @@ body.modal-open { overflow: hidden; }
 
 
 /* Shared, in-flow Action submenu for license and SkillFusion users. */
-.stat-card small.expired-count { color:#ff5252; margin-top:6px; font-weight:700; }
+.stat-card small.expired-count { display:block; color:#ff5252; margin-top:6px; font-weight:700; }
 .expiry-value { display:inline-block; min-width:100px; line-height:1.5; }
 .expiry-value.expired { color:#ff5252; font-weight:700; }
 .actions.action-dropdown-cell { min-width:110px; }
