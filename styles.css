@@ -856,7 +856,7 @@ body.modal-open { overflow: hidden; }
 }
 
 
-/* Shared, in-flow Action submenu for license and SkillFusion users. */
+/* Shared overlay Action submenu for license and SkillFusion users. */
 .stat-card small.expired-count { display:block; color:#ff5252; margin-top:6px; font-weight:700; }
 .expiry-value { display:inline-block; min-width:100px; line-height:1.5; }
 .expiry-value.expired { color:#ff5252; font-weight:700; }
@@ -867,6 +867,7 @@ body.modal-open { overflow: hidden; }
 .user-action-menu summary:focus-visible { outline:2px solid #48d79b; outline-offset:2px; }
 .action-triangle { display:inline-block; font-size:11px; }
 .user-action-menu[open] .action-triangle { transform:rotate(90deg); }
-.action-menu-items { display:flex; flex-direction:column; gap:6px; padding:8px 0 2px; }
+.action-menu-items { display:none; position:fixed; margin:0; width:150px; flex-direction:column; gap:6px; padding:8px; background:#0b2119; color:#bde5d4; border:1px solid #365248; border-radius:8px; box-shadow:0 12px 30px #0008; z-index:1000; }
+.action-menu-items:popover-open { display:flex; }
 .action-menu-items button { width:100%; min-height:30px; flex:none; text-align:left; padding:0 10px; }
 .user-card-actions .user-action-menu { margin-left:auto; }

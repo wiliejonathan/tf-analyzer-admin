@@ -1113,5 +1113,46 @@
     }
   }
 
+  // Top-layer menus avoid table overflow clipping and keep row height unchanged.
+  let openActionMenu = null;
+  function closeActionMenu() {
+    if (!openActionMenu) return;
+    const menu = openActionMenu;
+    openActionMenu = null;
+    const panel = menu.querySelector(".action-menu-items");
+    if (panel?.matches(":popover-open")) panel.hidePopover();
+    menu.open = false;
+  }
+  document.addEventListener("toggle", event => {
+    const menu = event.target;
+    if (!menu.matches?.("details.user-action-menu")) return;
+    if (!menu.open) {
+      if (openActionMenu === menu) closeActionMenu();
+      return;
+    }
+    if (openActionMenu && openActionMenu !== menu) closeActionMenu();
+    openActionMenu = menu;
+    const panel = menu.querySelector(".action-menu-items");
+    panel.setAttribute("popover", "manual");
+    panel.showPopover();
+    const rect = menu.querySelector("summary").getBoundingClientRect();
+    const width = panel.offsetWidth;
+    const height = panel.offsetHeight;
+    panel.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - width - 8))}px`;
+    panel.style.top = `${rect.bottom + height + 12 <= innerHeight ? rect.bottom + 6 : Math.max(8, rect.top - height - 6)}px`;
+  }, true);
+  document.addEventListener("click", event => {
+    if (openActionMenu && (!openActionMenu.contains(event.target) || event.target.closest(".action-menu-items button"))) closeActionMenu();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && openActionMenu) {
+      const summary = openActionMenu.querySelector("summary");
+      closeActionMenu();
+      summary.focus();
+    }
+  });
+  window.addEventListener("resize", closeActionMenu);
+  document.addEventListener("scroll", closeActionMenu, true);
+
   boot();
 })();
