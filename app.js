@@ -124,7 +124,8 @@
     if (!ensureConfigured()) throw new Error("API_URL_NOT_CONFIGURED");
     if (!adminKey) throw new Error("ADMIN_KEY_REQUIRED");
 
-    const timeoutMs = Math.max(6000, Number(options.timeoutMs || 14000));
+    const isMail = command === "send_email" || command === "send_update_email";
+    const timeoutMs = Math.max(6000, Number(options.timeoutMs || (isMail ? 60000 : 14000)));
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -143,8 +144,14 @@
       if (!response.ok || payload?.success === false || payload?.ok === false) {
         throw new Error(payload?.message || payload?.error || payload?.code || `HTTP_${response.status}`);
       }
+      if (isMail && (payload?.result?.success !== true || payload.result.ok === false)) {
+        throw new Error(payload?.result?.message || payload?.result?.error || "Server belum mengonfirmasi pengiriman email.");
+      }
       return payload;
     } catch (err) {
+      if (isMail && (err?.name === "AbortError" || err instanceof TypeError)) {
+        throw new Error("Status pengiriman belum diketahui karena koneksi terputus atau waktu tunggu habis. Periksa folder Terkirim pengirim sebelum mengirim ulang agar email tidak ganda.");
+      }
       if (err && err.name === "AbortError") throw new Error(`API_TIMEOUT_${Math.round(timeoutMs / 1000)}S`);
       throw err;
     } finally {
@@ -194,10 +201,28 @@
     return 2;
   }
 
+  function userCreatedTime(user) {
+    const value = String(user?.createdAt || "").trim();
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (match) {
+      const [, day, month, year, hour = "00", minute = "00", second = "00"] = match;
+      const utc = Date.UTC(+year, +month - 1, +day, +hour, +minute, +second);
+      const date = new Date(utc);
+      if (date.getUTCFullYear() !== +year || date.getUTCMonth() !== +month - 1 || date.getUTCDate() !== +day || +hour > 23 || +minute > 59 || +second > 59) return 0;
+      return utc - 7 * 3600000;
+    }
+    // Only accept unambiguous ISO timestamps with an explicit timezone.
+    return /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? (Date.parse(value) || 0) : 0;
+  }
+
   function sortUsersForDisplay(list) {
     return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
       const priority = adminSortPriority(a) - adminSortPriority(b);
       if (priority !== 0) return priority;
+      const created = userCreatedTime(b) - userCreatedTime(a);
+      if (created) return created;
+      const row = (Number(b?.rowNumber) || 0) - (Number(a?.rowNumber) || 0);
+      if (row) return row;
       return String(a?.email || "").localeCompare(String(b?.email || ""), "id", { sensitivity: "base" });
     });
   }
@@ -597,6 +622,7 @@
       els.newTokenValue.textContent = token;
       els.newTokenResult.hidden = !token;
       els.addUserForm.reset();
+      currentPage = 1;
       await loadUsers(true);
       showToast(`User ${result?.user?.email || email} berhasil ditambahkan.`);
     } catch (err) { showToast(err.message || String(err), true); }
@@ -758,8 +784,12 @@
     setBusy(true, "Menjalankan aksi...");
     try {
       await callApi(action, { licenseId });
-      await loadUsers(true);
-      showToast("Aksi berhasil dijalankan.");
+      const mail = action === "send_email" || action === "send_update_email";
+      const message = mail ? "Server menerima pengiriman email. Penerimaan inbox belum terkonfirmasi; penerima perlu memeriksa Spam/Promosi juga." : "Aksi berhasil dijalankan.";
+      if (mail) setEmailReport(`${label}: ${message}`);
+      try { await loadUsers(true); }
+      catch (_) { showToast(`${message} Penyegaran daftar gagal; jangan ulangi pengiriman.`, true); return; }
+      showToast(message);
     } catch (err) { showToast(err.message || String(err), true); }
     finally { setBusy(false); }
   }
@@ -1021,44 +1051,41 @@
     }
   }
 
+  function setEmailReport(message) {
+    const report = $("emailReport");
+    if (report) { report.hidden = false; report.textContent = message; }
+  }
+
   async function bulkEmail(command, update) {
-    if (update) {
-      setBusy(true, "Memeriksa lisensi penerima email update...");
-      try {
-        // Refresh immediately before sending; never rely on a stale dashboard snapshot.
-        const snapshot = await callApi("list_users");
-        if (!Array.isArray(snapshot.users)) throw new Error("Data lisensi tidak tersedia. Email update tidak dikirim.");
-        applyUsers(snapshot.users);
-        const recipients = users.filter(user => user.validNow === true && !isExpired(user) && user.email && user.licenseId);
-        const skipped = users.length - recipients.length;
-        if (!recipients.length) {
-          showToast("Tidak ada lisensi aktif yang dapat menerima email update.");
-          return;
-        }
-        if (!confirm(`Kirim EMAIL UPDATE ke ${recipients.length} user aktif?\n${skipped} user expired/tidak aktif dilewati.\n\nPerhatikan kuota email harian Apps Script/Gmail.`)) return;
-        let sent = 0;
-        let failed = 0;
-        let expiredDuringSend = 0;
-        for (const user of recipients) {
-          if (isExpired(user)) { expiredDuringSend++; continue; }
-          setBusy(true, `Mengirim email update ${sent + failed + expiredDuringSend + 1}/${recipients.length}...`);
-          try {
-            const result = await callApi("send_update_email", { licenseId: user.licenseId });
-            if (result.result?.success === false || result.result?.ok === false) failed++;
-            else sent++;
-          } catch (_) { failed++; }
-        }
-        showToast(`Selesai. Sent: ${sent}, skipped: ${skipped + expiredDuringSend}, failed: ${failed}.`, failed > 0);
-      } catch (err) { showToast(err.message || String(err), true); }
-      finally { setBusy(false); }
-      return;
-    }
-    const text = update ? "Kirim EMAIL UPDATE ke SEMUA license yang masih aktif?" : "Kirim EMAIL TOKEN ke SEMUA license yang masih aktif?";
-    if (!confirm(text + "\n\nPerhatikan kuota email harian Apps Script/Gmail.")) return;
-    setBusy(true, update ? "Mengirim email update ke semua user..." : "Mengirim email ke semua user...");
+    setBusy(true, "Memeriksa lisensi penerima email...");
     try {
-      const result = await callApi(command);
-      showToast(`Selesai. Sent: ${result.sent || 0}, skipped: ${result.skipped || 0}, failed: ${result.failed || 0}.`, (result.failed || 0) > 0);
+      const snapshot = await callApi("list_users");
+      if (!Array.isArray(snapshot.users)) throw new Error("Data lisensi tidak tersedia. Email tidak dikirim.");
+      applyUsers(snapshot.users);
+      const recipients = users.filter(user => user.validNow === true && !isExpired(user) && user.email && user.licenseId);
+      let skipped = users.length - recipients.length;
+      if (!recipients.length) { showToast("Tidak ada lisensi aktif yang dapat menerima email."); return; }
+      if (!confirm(`Kirim EMAIL ${update ? "UPDATE" : "TOKEN"} ke ${recipients.length} user aktif?\n${skipped} user expired/tidak aktif dilewati.\n\nPerhatikan kuota email harian Apps Script/Gmail.`)) return;
+      let sent = 0, failed = 0;
+      const details = [];
+      // One request per recipient avoids a single long bulk request timing out.
+      // Never retry an uncertain send automatically: it may already have been sent.
+      for (let index = 0; index < recipients.length; index++) {
+        const user = recipients[index];
+        if (isExpired(user)) { skipped++; continue; }
+        setBusy(true, `Mengirim email ${index + 1}/${recipients.length}...`);
+        try {
+          await callApi(update ? "send_update_email" : "send_email", { licenseId: user.licenseId });
+          sent++;
+        } catch (err) {
+          failed++;
+          details.push(`${user.email}: ${err.message || String(err)}`);
+        }
+        setEmailReport(`Dikonfirmasi server: ${sent}. Gagal/belum terkonfirmasi: ${failed}. Dilewati: ${skipped}.` + (details.length ? "\n" + details.join("\n") : ""));
+      }
+      const summary = `Selesai. Dikonfirmasi server: ${sent}, dilewati: ${skipped}, gagal/belum terkonfirmasi: ${failed}.`;
+      setEmailReport(summary + "\nStatus server bukan bukti email diterima di inbox. Periksa Terkirim pengirim dan Spam/Promosi penerima." + (details.length ? "\n" + details.join("\n") : ""));
+      showToast(summary, failed > 0);
     } catch (err) { showToast(err.message || String(err), true); }
     finally { setBusy(false); }
   }
@@ -1189,3 +1216,4 @@
 
   boot();
 })();
+

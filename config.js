@@ -59,9 +59,9 @@ window.TF_ADMIN_CONFIG = {
       const looksLikeLicenseUser = sample && typeof sample === "object" && ("licenseId" in sample || "token" in sample) && ("email" in sample);
       const looksLikeMember = sample && typeof sample === "object" && ("memberId" in sample || "photoUrl" in sample || "createdAt" in sample) && ("email" in sample);
       const mainDisplaySort = looksLikeLicenseUser && src.includes("adminSortPriority");
-      const memberEmailSort = looksLikeMember && src.includes("localeCompare") && src.includes("email");
-      const memberRecentSort = looksLikeMember && src.includes("lastSeenAt") && src.includes("createdAt");
-      if (mainDisplaySort || memberEmailSort || memberRecentSort) {
+      const memberEmailSort = !looksLikeLicenseUser && looksLikeMember && src.includes("localeCompare") && src.includes("email");
+      const memberRecentSort = !looksLikeLicenseUser && looksLikeMember && src.includes("lastSeenAt") && src.includes("createdAt");
+      if (!mainDisplaySort && (memberEmailSort || memberRecentSort)) {
         const ordered = pinPrimaryFirst(Array.from(this));
         for (let i = 0; i < ordered.length; i++) this[i] = ordered[i];
         return this;
@@ -332,3 +332,4 @@ window.TF_ADMIN_CONFIG = {
     document.body.appendChild(presenceScript);
   }
 })();
+
